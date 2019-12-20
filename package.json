@@ -39,7 +39,7 @@
   "dependencies": {
     "aws-sdk": "^2",
     "core-js": "^3.0.0",
-    "relater": "^0.1.0",
+    "relater": "^0.2.0",
     "uuid": "^3.3.2"
   },
   "devDependencies": {
