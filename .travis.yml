@@ -8,10 +8,10 @@ before_install:
 
 language: node_js
 node_js:
-  - 11
+  - 13
+  - 12
   - 10
   - 8
-  - 6
 
 script:
   - npm test
