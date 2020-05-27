@@ -1,8 +1,9 @@
-import { DeepPartial, Transformer } from "relater"
-import uuid from "uuid/v4"
-import { Connection } from "../connection/connection"
-import { DynamoCursor } from "../interfaces/connection"
-import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
+import { Transformer } from 'relater'
+import uuid from 'uuid/v4'
+
+import { Connection } from '../connection/connection'
+import { DynamoCursor } from '../interfaces/connection'
+import { RepositoryOptions, RetrieveOptions, RetrieveResult } from '../interfaces/repository'
 
 
 function encodeBase64(cursor: DynamoCursor): string {
@@ -84,7 +85,7 @@ export class Repository<Entity> {
     return
   }
 
-  public async create(attrs: DeepPartial<Entity>): Promise<Entity> {
+  public async create(attrs: Partial<Entity>): Promise<Entity> {
     const entity: any = {...attrs}
     for (const generatedValue of this.options.generatedValues) {
       if (generatedValue.strategy === "uuid") {

@@ -1,10 +1,8 @@
 
 export {
-  Identifier,
   ConstructType,
   Scalar,
   MaybeArray,
-  DeepPartial,
 
   ColumnType,
   RelationType,

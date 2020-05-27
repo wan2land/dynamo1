@@ -1,10 +1,19 @@
-import faker from "faker"
+import faker from 'faker'
 
-import { DynamoCursor } from "../../lib"
-import { createOptions } from "../../lib/repository/create-options"
-import { Repository } from "../../lib/repository/repository"
-import { getSafeConnection } from "../helper"
-import { User } from "../stubs/user"
+import { User } from '../../stubs/user'
+import { Connection } from '../connection/connection'
+import { DynamoCursor } from '../interfaces/connection'
+import { createOptions } from './create-options'
+import { Repository } from './repository'
+
+async function createSafeConnection(table: string): Promise<Connection> {
+  const ddb = await global.createDynamoClient()
+  const connection = new Connection(ddb, {table})
+  await connection.initialize({
+    BillingMode: "PAY_PER_REQUEST",
+  })
+  return connection
+}
 
 
 const TableName = "dynamo1_service" 
@@ -24,7 +33,7 @@ function createFakeUser() {
 
 describe("testsuite of repository/repository", () => {
   it("test create", async () => {
-    const connection = await getSafeConnection(TableName)
+    const connection = await createSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
     const fakeUser = createFakeUser()
 
@@ -62,7 +71,7 @@ describe("testsuite of repository/repository", () => {
 
 
   it("test find", async () => {
-    const connection = await getSafeConnection(TableName)
+    const connection = await createSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
     const fakeUser = createFakeUser()
 
@@ -87,7 +96,7 @@ describe("testsuite of repository/repository", () => {
 
 
   it("test remove", async () => {
-    const connection = await getSafeConnection(TableName)
+    const connection = await createSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
     const fakeUser = createFakeUser()
 
@@ -109,7 +118,7 @@ describe("testsuite of repository/repository", () => {
   
 
   it("test retrieve", async () => {
-    const connection = await getSafeConnection(TableName)
+    const connection = await createSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
 
     // clean
@@ -141,7 +150,7 @@ describe("testsuite of repository/repository", () => {
 
 
   it("test retrieve by index", async () => {
-    const connection = await getSafeConnection(TableName)
+    const connection = await createSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
 
     // clean
@@ -174,7 +183,7 @@ describe("testsuite of repository/repository", () => {
 
 
   it("test persist(update)", async () => {
-    const connection = await getSafeConnection(TableName)
+    const connection = await createSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
 
     const fakeUser = createFakeUser()

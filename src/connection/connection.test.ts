@@ -1,10 +1,18 @@
-import { Connection } from "../../lib/connection/connection"
-import { getDynamoClient, getSafeConnection } from "../helper"
+import { Connection } from "./connection"
+
+async function createSafeConnection(table: string): Promise<Connection> {
+  const ddb = await global.createDynamoClient()
+  const connection = new Connection(ddb, {table})
+  await connection.initialize({
+    BillingMode: "PAY_PER_REQUEST",
+  })
+  return connection
+}
 
 
 describe("testsuite of connection/connection", () => {
   it("test initialize and doctor", async () => {
-    const ddb = await getDynamoClient()
+    const ddb = await global.createDynamoClient()
     const connection = new Connection(ddb, {table: "dynamo1"})
 
     await connection.initialize({
@@ -16,7 +24,7 @@ describe("testsuite of connection/connection", () => {
 
 
   it("test getItem", async () => {
-    const connection = await getSafeConnection("dynamo1")
+    const connection = await createSafeConnection("dynamo1")
 
     expect(await connection.getItem("test-connection", "1")).toEqual(null)
 
@@ -43,7 +51,7 @@ describe("testsuite of connection/connection", () => {
 
 
   it("test count", async () => {
-    const connection = await getSafeConnection("dynamo1")
+    const connection = await createSafeConnection("dynamo1")
 
     expect(await connection.count("test-connection")).toEqual(0)
 
@@ -70,7 +78,7 @@ describe("testsuite of connection/connection", () => {
 
 
   it("test query", async () => {
-    const connection = await getSafeConnection("dynamo1")
+    const connection = await createSafeConnection("dynamo1")
 
     for (let i = 0; i < 10; i++) {
       await connection.client.putItem({
@@ -185,7 +193,7 @@ describe("testsuite of connection/connection", () => {
 
 
   it("test deleteItem", async () => {
-    const connection = await getSafeConnection("dynamo1")
+    const connection = await createSafeConnection("dynamo1")
 
     await connection.client.putItem({
       TableName: "dynamo1",
@@ -209,7 +217,7 @@ describe("testsuite of connection/connection", () => {
 
 
   it("test putItems", async () => {
-    const connection = await getSafeConnection("dynamo1")
+    const connection = await createSafeConnection("dynamo1")
 
     try {
       await connection.putItems([{
@@ -296,7 +304,7 @@ describe("testsuite of connection/connection", () => {
   })
 
   it("test getManyItems", async () => {
-    const connection = await getSafeConnection("dynamo1")
+    const connection = await createSafeConnection("dynamo1")
 
     expect(await connection.getManyItems([])).toEqual([])
 
@@ -331,7 +339,7 @@ describe("testsuite of connection/connection", () => {
   })
 
   it("test deleteManyItems", async () => {
-    const connection = await getSafeConnection("dynamo1")
+    const connection = await createSafeConnection("dynamo1")
 
     await connection.putItems([
       {cursor: {hashKey: "test-connection", rangeKey: "1"}, node: {title: "item 1"}},

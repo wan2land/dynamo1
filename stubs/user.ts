@@ -1,4 +1,4 @@
-import { Column, Index, Entity, GeneratedValue, Id, columnBy } from "../../lib"
+import { Column, columnBy, Entity, GeneratedValue, Id, Index } from '../src'
 
 
 @Entity({name: "user"})
