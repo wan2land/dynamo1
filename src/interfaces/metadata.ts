@@ -1,4 +1,3 @@
-import { Identifier } from "relater"
 
 
 export interface MetadataEntity {
@@ -14,11 +13,11 @@ export interface MetadataIndex {
 
 export interface MetadataGeneratedValue {
   target: any
-  property: Identifier
+  property: string | symbol
   strategy: string
 }
 
 export interface MetadataId {
   target: any
-  property: Identifier
+  property: string | symbol
 }

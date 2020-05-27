@@ -1,5 +1,5 @@
 import { Transformer } from 'relater'
-import uuid from 'uuid/v4'
+import { v4 as uuid } from 'uuid'
 
 import { Connection } from '../connection/connection'
 import { DynamoCursor } from '../interfaces/connection'

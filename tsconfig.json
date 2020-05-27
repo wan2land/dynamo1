@@ -17,6 +17,9 @@
     "noImplicitReturns": true,
     "experimentalDecorators": true
   },
+  "files": [
+    "./types/jest.d.ts"
+  ],
   "include": [
     "src/**/*"
   ]

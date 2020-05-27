@@ -1,9 +1,9 @@
-import { Identifier, RelaterOptions } from "relater"
+import { RelaterOptions } from "relater"
 
 export interface RepositoryOptions<P> extends RelaterOptions<P> {
   name: string
   id: {
-    property: Identifier
+    property: string | symbol
     sourceKey: string
   }
   indexes: {
@@ -11,7 +11,7 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
     indexer(entity: P): string  
   }[]
   generatedValues: {
-    property: Identifier
+    property: string | symbol
     strategy: string
   }[]
 }
