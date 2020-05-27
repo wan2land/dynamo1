@@ -1,7 +1,7 @@
 # Dynamo1
 
 <p>
-  <a href="https://travis-ci.org/wan2land/dynamo1"><img alt="Build" src="https://img.shields.io/travis/wan2land/dynamo1.svg?style=flat-square" /></a>
+  <a href="https://github.com/wan2land/dynamo1/actions?query=workflow%3A%22Node.js+CI%22"><img alt="Build" src="https://img.shields.io/github/workflow/status/wan2land/dynamo1/Node.js%20CI?logo=github&style=flat-square" /></a>
   <a href="https://npmcharts.com/compare/dynamo1?minimal=true"><img alt="Downloads" src="https://img.shields.io/npm/dt/dynamo1.svg?style=flat-square" /></a>
   <a href="https://www.npmjs.com/package/dynamo1"><img alt="Version" src="https://img.shields.io/npm/v/dynamo1.svg?style=flat-square" /></a>
   <a href="https://www.npmjs.com/package/dynamo1"><img alt="License" src="https://img.shields.io/npm/l/dynamo1.svg?style=flat-square" /></a>

@@ -12,7 +12,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/corgidisco/dynamo1.git"
+    "url": "git://github.com/wan2land/dynamo1.git"
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
