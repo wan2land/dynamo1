@@ -7,22 +7,22 @@ import { RepositoryOptions, RetrieveOptions, RetrieveResult } from '../interface
 
 
 function encodeBase64(cursor: DynamoCursor): string {
-  return Buffer.from(JSON.stringify(cursor)).toString("base64")
+  return Buffer.from(JSON.stringify(cursor)).toString('base64')
 }
 
 function decodeBase64(buffer: string): DynamoCursor {
-  return JSON.parse(Buffer.from(buffer, "base64").toString("ascii"))
+  return JSON.parse(Buffer.from(buffer, 'base64').toString('ascii'))
 }
 
 export class Repository<Entity> {
-  
+
   public transformer: Transformer<Entity>
 
   public constructor(public connection: Connection, public options: RepositoryOptions<Entity>) {
     this.transformer = new Transformer(options)
   }
 
-  public async retrieve({limit = 20, after, index, desc = false}: RetrieveOptions = {}): Promise<RetrieveResult<Entity>> {
+  public async retrieve({ limit = 20, after, index, desc = false }: RetrieveOptions = {}): Promise<RetrieveResult<Entity>> {
     let endCursor: DynamoCursor | undefined
     const nodes: {cursor: string, node: Entity}[] = []
     if (index) {
@@ -31,15 +31,15 @@ export class Repository<Entity> {
         after: after ? decodeBase64(after) : undefined,
         desc,
       })
-      const result = await this.connection.getManyItems(indexes.nodes.map(({node}) => ({
+      const result = await this.connection.getManyItems(indexes.nodes.map(({ node }) => ({
         hashKey: node.sourcetype,
         rangeKey: node.sourceid,
       })))
       endCursor = indexes.endCursor
-      indexes.nodes.forEach(({node, cursor}) => {
+      indexes.nodes.forEach(({ node, cursor }) => {
         const foundNode = result.find((result) => {
           return result[this.connection.options.hashKey] === node.sourcetype
-            && result[this.connection.options.rangeKey] === node.sourceid + "" 
+            && result[this.connection.options.rangeKey] === `${node.sourceid}`
         })
         if (foundNode) {
           foundNode[this.options.id.sourceKey] = foundNode[this.connection.options.rangeKey]
@@ -56,7 +56,7 @@ export class Repository<Entity> {
         desc,
       })
       endCursor = result.endCursor
-      result.nodes.forEach(({node, cursor}) => {
+      result.nodes.forEach(({ node, cursor }) => {
         node[this.options.id.sourceKey] = node[this.connection.options.rangeKey]
         nodes.push({
           node: this.transformer.toEntity(node),
@@ -69,7 +69,7 @@ export class Repository<Entity> {
       return {
         nodes,
         endCursor: encodeBase64(endCursor),
-      }  
+      }
     }
     return {
       nodes,
@@ -82,20 +82,20 @@ export class Repository<Entity> {
       node[this.options.id.sourceKey] = id
       return this.transformer.toEntity(node)
     }
-    return
+
   }
 
   public async create(attrs: Partial<Entity>): Promise<Entity> {
-    const entity: any = {...attrs}
+    const entity: any = { ...attrs }
     for (const generatedValue of this.options.generatedValues) {
-      if (generatedValue.strategy === "uuid") {
+      if (generatedValue.strategy === 'uuid') {
         entity[generatedValue.property] = uuid()
       }
     }
     Object.setPrototypeOf(entity, this.options.ctor.prototype)
     const id = entity[this.options.id.property]
     if (!id) {
-      throw new Error("id not defined!")
+      throw new Error('id not defined!')
     }
     await this.connection.putItems([
       {
@@ -124,7 +124,7 @@ export class Repository<Entity> {
   public async persist(entity: Entity): Promise<void> {
     const id = (entity as any)[this.options.id.property]
     if (!id) {
-      throw new Error("id not defined!")
+      throw new Error('id not defined!')
     }
 
     // @todo remove legacy index
@@ -156,7 +156,7 @@ export class Repository<Entity> {
   public async remove(entity: Entity): Promise<void> {
     const id = (entity as any)[this.options.id.property]
     if (!id) {
-      throw new Error("id not defined!")
+      throw new Error('id not defined!')
     }
 
     await this.connection.deleteManyItems([

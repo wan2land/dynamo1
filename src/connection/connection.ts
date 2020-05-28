@@ -1,19 +1,19 @@
-import { DynamoDB } from "aws-sdk"
-import { BillingMode, ProvisionedThroughput, WriteRequest } from "aws-sdk/clients/dynamodb"
-import { ConstructType } from "relater"
-import { ConnectionOptions, DynamoCursor, DynamoNode, QueryOptions, QueryResult } from "../interfaces/connection"
-import { createOptions } from "../repository/create-options"
-import { Repository } from "../repository/repository"
-import { fromDynamoAttributeMap } from "./from-dynamo-attribute"
-import { toDynamoAttributeMap } from "./to-dynamo-attribute"
+import { DynamoDB } from 'aws-sdk'
+import { BillingMode, ProvisionedThroughput, WriteRequest } from 'aws-sdk/clients/dynamodb'
+import { ConstructType } from 'relater'
+import { ConnectionOptions, DynamoCursor, DynamoNode, QueryOptions, QueryResult } from '../interfaces/connection'
+import { createOptions } from '../repository/create-options'
+import { Repository } from '../repository/repository'
+import { fromDynamoAttributeMap } from './from-dynamo-attribute'
+import { toDynamoAttributeMap } from './to-dynamo-attribute'
 
 
 export class Connection {
-  
+
   public options: {
-    table: string
-    hashKey: string
-    rangeKey: string
+    table: string,
+    hashKey: string,
+    rangeKey: string,
   }
 
   public repositories = new Map<ConstructType<any>, Repository<any>>()
@@ -21,36 +21,36 @@ export class Connection {
   public constructor(public client: DynamoDB, options: ConnectionOptions) {
     this.options = {
       table: options.table,
-      hashKey: options.hashKey || "hashid",
-      rangeKey: options.rangeKey || "rangeid",
+      hashKey: options.hashKey ?? 'hashid',
+      rangeKey: options.rangeKey ?? 'rangeid',
     }
   }
 
   public async initialize(mode: {BillingMode?: BillingMode, ProvisionedThroughput?: ProvisionedThroughput}) {
     const listTables = await this.client.listTables().promise()
-    const tableNames = listTables.TableNames || []
-    if (tableNames.indexOf(this.options.table) === -1) {
+    const tableNames = listTables.TableNames ?? []
+    if (!tableNames.includes(this.options.table)) {
       await this.client.createTable({
         TableName: this.options.table,
         KeySchema: [
           {
             AttributeName: this.options.hashKey,
-            KeyType: "HASH",
+            KeyType: 'HASH',
 
           },
           {
             AttributeName: this.options.rangeKey,
-            KeyType: "RANGE", 
+            KeyType: 'RANGE',
           },
         ],
         AttributeDefinitions: [
           {
             AttributeName: this.options.hashKey,
-            AttributeType: "S",
+            AttributeType: 'S',
           },
           {
             AttributeName: this.options.rangeKey,
-            AttributeType: "S",
+            AttributeType: 'S',
           },
         ],
         ...mode,
@@ -65,7 +65,7 @@ export class Connection {
     if (description && description.Table) {
       const keySchema = description.Table.KeySchema || []
       if (keySchema.length !== 2) {
-        throw new Error("need two keys(hash, range).")
+        throw new Error('need two keys(hash, range).')
       }
       if (keySchema[0].AttributeName !== this.options.hashKey) {
         throw new Error(`hash key name must be ${this.options.hashKey}. current hash key is ${keySchema[0].AttributeName}.`)
@@ -87,20 +87,20 @@ export class Connection {
     return repository as R
   }
 
-  public query<P = any>(hashKey: string, {limit = 20, after, desc = false}: QueryOptions = {}): Promise<QueryResult<P>> {
+  public query<P = any>(hashKey: string, { limit = 20, after, desc = false }: QueryOptions = {}): Promise<QueryResult<P>> {
     return new Promise((resolve, reject) => this.client.query({
       TableName: this.options.table,
       Limit: limit,
-      KeyConditionExpression: `#hashkey = :hashkey`,
+      KeyConditionExpression: '#hashkey = :hashkey',
       ExpressionAttributeNames: {
-        "#hashkey": this.options.hashKey,
+        '#hashkey': this.options.hashKey,
       },
       ExpressionAttributeValues: {
-        ":hashkey": {S: hashKey},
+        ':hashkey': { S: hashKey },
       },
       ExclusiveStartKey: after ? {
-        [this.options.hashKey]: {S: after.hashKey},
-        [this.options.rangeKey]: {S: after.rangeKey},
+        [this.options.hashKey]: { S: after.hashKey },
+        [this.options.rangeKey]: { S: after.rangeKey },
       } : undefined,
       ScanIndexForward: !desc,
     }, (err, result) => {
@@ -138,10 +138,10 @@ export class Connection {
     return new Promise((resolve, reject) => this.client.getItem({
       TableName: this.options.table,
       Key: rangeKey ? {
-        [this.options.hashKey]: {S: hashKey},
-        [this.options.rangeKey]: {S: rangeKey},
+        [this.options.hashKey]: { S: hashKey },
+        [this.options.rangeKey]: { S: rangeKey },
       } : {
-        [this.options.hashKey]: {S: hashKey},
+        [this.options.hashKey]: { S: hashKey },
       },
     }, (err, data) => {
       if (err) {
@@ -162,11 +162,11 @@ export class Connection {
       RequestItems: {
         [this.options.table]: {
           Keys: cursors.map((cursor) => ({
-            [this.options.hashKey]: {S: cursor.hashKey},
-            [this.options.rangeKey]: {S: cursor.rangeKey},
+            [this.options.hashKey]: { S: cursor.hashKey },
+            [this.options.rangeKey]: { S: cursor.rangeKey },
           })),
         },
-      }
+      },
     }, (err, result) => {
       if (err) {
         return reject(err)
@@ -182,13 +182,13 @@ export class Connection {
     return new Promise((resolve, reject) => {
       this.client.query({
         TableName: this.options.table,
-        Select: "COUNT",
-        KeyConditionExpression: `#hashkey = :hashkey`,
+        Select: 'COUNT',
+        KeyConditionExpression: '#hashkey = :hashkey',
         ExpressionAttributeNames: {
-          "#hashkey": this.options.hashKey,
+          '#hashkey': this.options.hashKey,
         },
         ExpressionAttributeValues: {
-          ":hashkey": {S: hashKey},
+          ':hashkey': { S: hashKey },
         },
       }, (err, result) => {
         if (err) {
@@ -203,10 +203,10 @@ export class Connection {
     return new Promise((resolve, reject) => this.client.deleteItem({
       TableName: this.options.table,
       Key: rangeKey ? {
-        [this.options.hashKey]: {S: hashKey},
-        [this.options.rangeKey]: {S: rangeKey},
+        [this.options.hashKey]: { S: hashKey },
+        [this.options.rangeKey]: { S: rangeKey },
       } : {
-        [this.options.hashKey]: {S: hashKey},
+        [this.options.hashKey]: { S: hashKey },
       },
     }, (err) => {
       if (err) {
@@ -220,10 +220,10 @@ export class Connection {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
-    return new Promise(((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.client.batchWriteItem({
         RequestItems: {
-          [this.options.table]: cursors.map(({hashKey, rangeKey}): WriteRequest => {
+          [this.options.table]: cursors.map(({ hashKey, rangeKey }): WriteRequest => {
             return {
               DeleteRequest: {
                 Key: {
@@ -234,7 +234,7 @@ export class Connection {
                     S: rangeKey,
                   },
                 },
-              }
+              },
             }
           }),
         },
@@ -244,17 +244,17 @@ export class Connection {
         }
         if (result.UnprocessedItems && result.UnprocessedItems[this.options.table]) {
           const failKeys = result.UnprocessedItems[this.options.table]
-            .filter(({DeleteRequest}) => DeleteRequest)
-            .map(({DeleteRequest}) => DeleteRequest!.Key)
+            .filter(({ DeleteRequest }) => DeleteRequest)
+            .map(({ DeleteRequest }) => DeleteRequest!.Key)
           resolve(cursors.map((cursor) => {
             const foundFailKey = failKeys.find((failKey) => failKey[this.options.hashKey].S === cursor.hashKey
               && failKey[this.options.rangeKey].S === cursor.rangeKey)
-            return foundFailKey ? true : false
+            return !!foundFailKey
           }))
         }
         resolve(cursors.map(() => true))
       })
-    }))
+    })
   }
 
   public putItems<P = any>(rows: DynamoNode<P>[] = []): Promise<boolean[]> {
@@ -264,14 +264,14 @@ export class Connection {
     return new Promise((resolve, reject) => {
       let writeRequests: WriteRequest[]
       try {
-        writeRequests = rows.map(({cursor: {hashKey, rangeKey}, node}): WriteRequest => {
-          if (typeof (node as any)[this.options.hashKey] !== "undefined"
+        writeRequests = rows.map(({ cursor: { hashKey, rangeKey }, node }): WriteRequest => {
+          if (typeof (node as any)[this.options.hashKey] !== 'undefined'
             && (node as any)[this.options.hashKey] !== hashKey) {
-            throw new Error(`duplicate with hashKey`)
+            throw new Error('duplicate with hashKey')
           }
-          if (typeof (node as any)[this.options.rangeKey] !== "undefined"
+          if (typeof (node as any)[this.options.rangeKey] !== 'undefined'
             && (node as any)[this.options.rangeKey] !== rangeKey) {
-            throw new Error(`duplicate with rangeKey`)
+            throw new Error('duplicate with rangeKey')
           }
           return {
             PutRequest: {
@@ -284,7 +284,7 @@ export class Connection {
                 },
                 ...toDynamoAttributeMap(node),
               },
-            }
+            },
           }
         })
       } catch (e) {
@@ -294,19 +294,19 @@ export class Connection {
       this.client.batchWriteItem({
         RequestItems: {
           [this.options.table]: writeRequests,
-        }
+        },
       }, (err, result) => {
         if (err) {
           return reject(err)
         }
         if (result.UnprocessedItems && result.UnprocessedItems[this.options.table]) {
           const failKeys = result.UnprocessedItems[this.options.table]
-            .filter(({DeleteRequest}) => DeleteRequest)
-            .map(({DeleteRequest}) => DeleteRequest!.Key)
-          resolve(rows.map(({cursor}) => {
+            .filter(({ DeleteRequest }) => DeleteRequest)
+            .map(({ DeleteRequest }) => DeleteRequest!.Key)
+          resolve(rows.map(({ cursor }) => {
             const foundFailKey = failKeys.find((failKey) => failKey[this.options.hashKey].S === cursor.hashKey
               && failKey[this.options.rangeKey].S === cursor.rangeKey)
-            return foundFailKey ? true : false
+            return !!foundFailKey
           }))
         }
         resolve(rows.map(() => true))

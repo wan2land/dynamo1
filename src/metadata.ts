@@ -2,8 +2,8 @@ import {
   MetadataEntity,
   MetadataGeneratedValue,
   MetadataId,
-  MetadataIndex
-} from "./interfaces/metadata"
+  MetadataIndex,
+} from './interfaces/metadata'
 
 
 export const metadataEntities = new Map<any, MetadataEntity>()

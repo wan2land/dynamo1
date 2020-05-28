@@ -1,51 +1,51 @@
-import { createOptions } from "./create-options"
-import { User } from "../../stubs/user"
+import { createOptions } from './create-options'
+import { User } from '../../stubs/user'
 
 
-describe("testsuite of repository/create-options", () => {
-  it("test createOptions of User", () => {
+describe('testsuite of repository/create-options', () => {
+  it('test createOptions of User', () => {
     expect(createOptions(User)).toEqual({
-      name: "user",
+      name: 'user',
       ctor: User,
       id: {
-        property: "id",
-        sourceKey: "user_id",
+        property: 'id',
+        sourceKey: 'user_id',
       },
       generatedValues: [
         {
-          property: "id",
-          strategy: "uuid",
-        }
+          property: 'id',
+          strategy: 'uuid',
+        },
       ],
       indexes: [
         {
-          name: "created",
+          name: 'created',
           indexer: expect.any(Function),
         },
       ],
       columns: [
         {
-          property: "id",
-          sourceKey: "user_id",
-          type: "string",
+          property: 'id',
+          sourceKey: 'user_id',
+          type: 'string',
           nullable: false,
         },
         {
-          property: "username",
-          sourceKey: "username",
-          type: "string",
+          property: 'username',
+          sourceKey: 'username',
+          type: 'string',
           nullable: false,
         },
         {
-          property: "email",
-          sourceKey: "email",
-          type: "string",
+          property: 'email',
+          sourceKey: 'email',
+          type: 'string',
           nullable: false,
         },
         {
-          property: "createdAt",
-          sourceKey: "created_at",
-          type: "string",
+          property: 'createdAt',
+          sourceKey: 'created_at',
+          type: 'string',
           nullable: false,
         },
       ],

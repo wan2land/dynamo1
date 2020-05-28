@@ -1,4 +1,4 @@
-import { Indexer } from "./common"
+import { Indexer } from './common'
 
 
 export interface EntityDecoratorOptions {

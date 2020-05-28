@@ -1,6 +1,6 @@
-import { DynamoDB } from "aws-sdk"
-import { ConnectionOptions } from "../interfaces/connection"
-import { Connection } from "./connection"
+import { DynamoDB } from 'aws-sdk'
+import { ConnectionOptions } from '../interfaces/connection'
+import { Connection } from './connection'
 
 
 export interface CreateOptions extends ConnectionOptions {

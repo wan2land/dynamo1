@@ -1,5 +1,5 @@
-import { GeneratedValueDecoratorFactory } from "../interfaces/decorator"
-import { metadataGeneratedValues } from "../metadata"
+import { GeneratedValueDecoratorFactory } from '../interfaces/decorator'
+import { metadataGeneratedValues } from '../metadata'
 
 
 export const GeneratedValue: GeneratedValueDecoratorFactory = (options = {}) => (target, property) => {
@@ -11,6 +11,6 @@ export const GeneratedValue: GeneratedValueDecoratorFactory = (options = {}) => 
   values.push({
     target,
     property,
-    strategy: options.strategy || "uuid",
+    strategy: options.strategy || 'uuid',
   })
 }

@@ -1,4 +1,4 @@
-import { AttributeValue, AttributeMap } from "aws-sdk/clients/dynamodb"
+import { AttributeValue, AttributeMap } from 'aws-sdk/clients/dynamodb'
 
 export function fromDynamoAttributeMap(item: AttributeMap): {[key: string]: any} {
   return Object.keys(item).reduce((carry, key) => Object.assign(carry, {
@@ -16,7 +16,7 @@ export function fromDynamoAttribute(item: AttributeValue): any {
   if (item.N) {
     return +item.N
   }
-  if (typeof item.BOOL !== "undefined") {
+  if (typeof item.BOOL !== 'undefined') {
     return item.BOOL
   }
   if (item.L) {

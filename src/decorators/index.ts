@@ -1,5 +1,5 @@
-import { IndexDecoratorFactory } from "../interfaces/decorator"
-import { metadataIndexes } from "../metadata"
+import { IndexDecoratorFactory } from '../interfaces/decorator'
+import { metadataIndexes } from '../metadata'
 
 
 export const Index: IndexDecoratorFactory = (name, indexer) => (target) => {

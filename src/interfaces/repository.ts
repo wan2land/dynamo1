@@ -1,18 +1,18 @@
-import { RelaterOptions } from "relater"
+import { RelaterOptions } from 'relater'
 
 export interface RepositoryOptions<P> extends RelaterOptions<P> {
   name: string
   id: {
-    property: string | symbol
-    sourceKey: string
+    property: string | symbol,
+    sourceKey: string,
   }
   indexes: {
-    name: string
-    indexer(entity: P): string  
+    name: string,
+    indexer(entity: P): string,
   }[]
   generatedValues: {
-    property: string | symbol
-    strategy: string
+    property: string | symbol,
+    strategy: string,
   }[]
 }
 
@@ -26,8 +26,8 @@ export interface RetrieveOptions {
 
 export interface RetrieveResult<P> {
   nodes: {
-    cursor: string
-    node: P
+    cursor: string,
+    node: P,
   }[]
   endCursor?: string
 }
