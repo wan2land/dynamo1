@@ -1,28 +1,28 @@
+import { DynamoKey } from './common'
 
-export interface ConnectionOptions {
-  table: string
-  hashKey?: string
-  rangeKey?: string
+
+export interface CountOptions {
+  tableName?: string
 }
 
-export interface QueryOptions {
-  limit?: number
-  // offset?: number
-  after?: DynamoCursor
-  desc?: boolean
+export interface GetItemOptions {
+  tableName?: string
 }
 
-export interface QueryResult<P> {
-  nodes: DynamoNode<P>[]
-  endCursor?: DynamoCursor
+export interface PutItemOptions {
+  tableName?: string
+}
+
+export interface DeleteItemOptions {
+  tableName?: string
 }
 
 export interface DynamoNode<P> {
   cursor: DynamoCursor
-  node: P
+  data: P
 }
 
 export interface DynamoCursor {
-  hashKey: string
-  rangeKey: string
+  pk: DynamoKey
+  sk?: DynamoKey
 }

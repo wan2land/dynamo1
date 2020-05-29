@@ -260,4 +260,21 @@ describe('testsuite of connection/connection', () => {
     await expect(connection.getItem({ pk: 'users-5', sk: 'users-5_1' })).resolves.toBeNull()
     await expect(connection.getItem({ pk: 'users-5', sk: 'users-5_2' })).resolves.toBeNull()
   })
+
+  it('test count', async () => {
+    const connection = await connectionPromise
+
+    await expect(connection.count('count-users')).resolves.toEqual(0)
+
+    for (let i = 0; i < 10; i++) {
+      await connection.putItem({
+        cursor: { pk: 'count-users', sk: `count-users_${i}` },
+        data: {
+          value: `this is test count ${i}`,
+        },
+      })
+    }
+
+    await expect(connection.count('count-users')).resolves.toEqual(10)
+  })
 })

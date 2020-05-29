@@ -1,29 +1,36 @@
 import { DynamoDB } from 'aws-sdk'
 import { WriteRequest } from 'aws-sdk/clients/dynamodb'
 
-import { IndexableColumnType } from '../interfaces/common'
-import { DynamoCursor, DynamoNode } from '../interfaces/connection'
+import { DynamoKey, DynamoKeyType } from '../interfaces/common'
+import {
+  CountOptions,
+  DeleteItemOptions,
+  DynamoCursor,
+  DynamoNode,
+  GetItemOptions,
+  PutItemOptions,
+} from '../interfaces/connection'
 import { Repository } from '../repository/repository'
 import { fromDynamoMap } from '../utils/from-dynamo'
-import { toDynamoMap } from '../utils/to-dynamo'
+import { toDynamo, toDynamoMap } from '../utils/to-dynamo'
 import { assertIndexableColumnType } from '../utils/type'
 
 export interface ConnectionOptions {
   [aliasName: string]: {
     tableName: string,
     partitionKey: string,
-    partitionKeyType?: IndexableColumnType,
+    partitionKeyType?: DynamoKeyType,
     sortKey?: string,
-    sortKeyType?: IndexableColumnType,
+    sortKeyType?: DynamoKeyType,
   }
 }
 
 export interface TableOption {
   tableName: string
   partitionKey: string
-  partitionKeyType: IndexableColumnType
+  partitionKeyType: DynamoKeyType
   sortKey?: string
-  sortKeyType?: IndexableColumnType
+  sortKeyType?: DynamoKeyType
 }
 
 export class Connection {
@@ -48,8 +55,23 @@ export class Connection {
     }
   }
 
-  getItem<TResult extends Record<string, any>>(cursor: DynamoCursor, options: { aliasName?: string } = {}): Promise<DynamoNode<TResult> | null> {
-    const option = this._getOptionByAliasName(options.aliasName)
+  public count(pk: DynamoKey, options: CountOptions = {}): Promise<number> {
+    const option = this._findOptionByAliasName(options.tableName)
+    return this.client.query({
+      TableName: option.tableName,
+      Select: 'COUNT',
+      KeyConditionExpression: '#pk = :pk',
+      ExpressionAttributeNames: {
+        '#pk': option.partitionKey,
+      },
+      ExpressionAttributeValues: {
+        ':pk': toDynamo(pk),
+      },
+    }).promise().then(({ Count }) => Count ?? 0)
+  }
+
+  getItem<TResult extends Record<string, any>>(cursor: DynamoCursor, options: GetItemOptions = {}): Promise<DynamoNode<TResult> | null> {
+    const option = this._findOptionByAliasName(options.tableName)
 
     assertIndexableColumnType(option.partitionKeyType, cursor.pk)
     if (option.sortKeyType) {
@@ -64,12 +86,12 @@ export class Connection {
     })
   }
 
-  getManyItems<TResult extends Record<string, any>>(cursors: DynamoCursor[], options: { aliasName?: string } = {}): Promise<DynamoNode<TResult>[]> {
+  getManyItems<TResult extends Record<string, any>>(cursors: DynamoCursor[], options: GetItemOptions = {}): Promise<DynamoNode<TResult>[]> {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
 
-    const option = this._getOptionByAliasName(options.aliasName)
+    const option = this._findOptionByAliasName(options.tableName)
     for (const cursor of cursors) {
       assertIndexableColumnType(option.partitionKeyType, cursor.pk)
       if (option.sortKeyType) {
@@ -88,8 +110,8 @@ export class Connection {
     })
   }
 
-  putItem<TData extends Record<string, any>>(node: DynamoNode<TData>, options: { aliasName?: string } = {}): Promise<DynamoNode<TData> | null> {
-    const option = this._getOptionByAliasName(options.aliasName)
+  putItem<TData extends Record<string, any>>(node: DynamoNode<TData>, options: PutItemOptions = {}): Promise<DynamoNode<TData> | null> {
+    const option = this._findOptionByAliasName(options.tableName)
 
     assertIndexableColumnType(option.partitionKeyType, node.cursor.pk)
     if (option.sortKeyType) {
@@ -110,12 +132,12 @@ export class Connection {
     })
   }
 
-  putManyItems<TData extends Record<string, any>>(nodes: DynamoNode<TData>[] = [], options: { aliasName?: string } = {}): Promise<boolean[]> {
+  putManyItems<TData extends Record<string, any>>(nodes: DynamoNode<TData>[] = [], options: PutItemOptions = {}): Promise<boolean[]> {
     if (nodes.length === 0) {
       return Promise.resolve([])
     }
 
-    const option = this._getOptionByAliasName(options.aliasName)
+    const option = this._findOptionByAliasName(options.tableName)
     for (const node of nodes) {
       assertIndexableColumnType(option.partitionKeyType, node.cursor.pk)
       if (option.sortKeyType) {
@@ -149,8 +171,8 @@ export class Connection {
     })
   }
 
-  public deleteItem<TResult extends Record<string, any>>(cursor: DynamoCursor, options: { aliasName?: string } = {}): Promise<DynamoNode<TResult> | null> {
-    const option = this._getOptionByAliasName(options.aliasName)
+  public deleteItem<TResult extends Record<string, any>>(cursor: DynamoCursor, options: DeleteItemOptions = {}): Promise<DynamoNode<TResult> | null> {
+    const option = this._findOptionByAliasName(options.tableName)
 
     assertIndexableColumnType(option.partitionKeyType, cursor.pk)
     if (option.sortKeyType) {
@@ -166,12 +188,12 @@ export class Connection {
     })
   }
 
-  public deleteManyItems(cursors: DynamoCursor[], options: { aliasName?: string } = {}): Promise<boolean[]> {
+  public deleteManyItems(cursors: DynamoCursor[], options: DeleteItemOptions = {}): Promise<boolean[]> {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
 
-    const option = this._getOptionByAliasName(options.aliasName)
+    const option = this._findOptionByAliasName(options.tableName)
     for (const cursor of cursors) {
       assertIndexableColumnType(option.partitionKeyType, cursor.pk)
       if (option.sortKeyType) {
@@ -223,7 +245,7 @@ export class Connection {
     return { cursor, data: parsed as TResult }
   }
 
-  _getOptionByAliasName(aliasName?: string): TableOption {
+  _findOptionByAliasName(aliasName?: string): TableOption {
     return this.options.get(aliasName ?? 'default') ?? this.options.entries().next().value
   }
 }
