@@ -1,23 +1,23 @@
-
+import { ColumnTypeConstructor } from './common'
+import { TableIndex } from './repository'
 
 export interface MetadataEntity {
-  target: any
+  target: Function
   name: string
+  aliasName: string
+  separator: string
+  pk: TableIndex<any>[]
+  sk: TableIndex<any>[]
+  gsi: {
+    pk: TableIndex<any>[],
+    sk: TableIndex<any>[],
+  }[]
 }
 
-export interface MetadataIndex {
-  target: any
+export interface MetadataColumn {
+  target: Function
+  property: string | symbol
   name: string
-  indexer(entity: any): string
-}
-
-export interface MetadataGeneratedValue {
-  target: any
-  property: string | symbol
-  strategy: string
-}
-
-export interface MetadataId {
-  target: any
-  property: string | symbol
+  type: ColumnTypeConstructor
+  nullable: boolean
 }

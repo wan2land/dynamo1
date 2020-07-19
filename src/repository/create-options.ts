@@ -1,36 +1,17 @@
-import { ConstructType, createOptions as createRelaterOptions } from 'relater'
+import { ConstructType } from '../interfaces/common'
 import { RepositoryOptions } from '../interfaces/repository'
-import { metadataIds, metadataEntities, metadataGeneratedValues, metadataIndexes } from '../metadata'
+import { MetadataStorage } from '../metadata/storage'
 
 
-export function createOptions<Entity>(ctor: ConstructType<Entity>): RepositoryOptions<Entity> {
-  const entity = metadataEntities.get(ctor)
+export function createOptions<Entity>(ctor: ConstructType<Entity>, meatadataStorage?: MetadataStorage): RepositoryOptions<Entity> {
+  meatadataStorage = meatadataStorage ?? MetadataStorage.getGlobalStorage()
+  const entity = meatadataStorage.entities.get(ctor)
   if (!entity) {
     throw new Error('not defined entity')
   }
-  const id = metadataIds.get(ctor)
-  if (!id) {
-    throw new Error('not defined id')
-  }
-  const relaterOptions = createRelaterOptions(ctor)
-  const idColumn = relaterOptions.columns.find((column) => column.property === id.property)
-  if (!idColumn) {
-    throw new Error('not defined id column')
-  }
+
   return {
-    name: entity.name,
-    id: {
-      property: id.property,
-      sourceKey: idColumn.sourceKey,
-    },
-    indexes: (metadataIndexes.get(ctor) || []).map(({ name, indexer }) => ({
-      name,
-      indexer,
-    })),
-    generatedValues: (metadataGeneratedValues.get(ctor) || []).map((value) => ({
-      property: value.property,
-      strategy: value.strategy,
-    })),
-    ...relaterOptions,
+    ...entity,
+    columns: meatadataStorage.columns.get(ctor) ?? [],
   }
 }

@@ -5,51 +5,50 @@ import { User } from '../../stubs/user'
 describe('testsuite of repository/create-options', () => {
   it('test createOptions of User', () => {
     expect(createOptions(User)).toEqual({
-      name: 'user',
-      ctor: User,
-      id: {
-        property: 'id',
-        sourceKey: 'user_id',
-      },
-      generatedValues: [
-        {
-          property: 'id',
-          strategy: 'uuid',
-        },
-      ],
-      indexes: [
-        {
-          name: 'created',
-          indexer: expect.any(Function),
-        },
-      ],
+      target: User,
+      name: 'users',
+      aliasName: 'default',
+      separator: '#',
+      pk: [{ type: 'text', value: 'users' }],
+      sk: [{ type: 'column', value: 'id' }],
+      gsi: [],
       columns: [
         {
+          target: User,
           property: 'id',
-          sourceKey: 'user_id',
-          type: 'string',
+          name: 'user_id',
+          type: String,
           nullable: false,
         },
         {
+          target: User,
           property: 'username',
-          sourceKey: 'username',
-          type: 'string',
+          name: 'username',
+          type: String,
           nullable: false,
         },
         {
+          target: User,
           property: 'email',
-          sourceKey: 'email',
-          type: 'string',
+          name: 'email',
+          type: String,
+          nullable: true,
+        },
+        {
+          target: User,
+          property: 'createdAt',
+          name: 'createdAt',
+          type: Number,
           nullable: false,
         },
         {
-          property: 'createdAt',
-          sourceKey: 'created_at',
-          type: 'string',
+          target: User,
+          property: 'updatedAt',
+          name: 'updatedAt',
+          type: Number,
           nullable: false,
         },
       ],
-      relations: [],
     })
   })
 })

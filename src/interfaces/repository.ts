@@ -1,34 +1,19 @@
-import { RelaterOptions } from 'relater'
+import { MetadataEntity, MetadataColumn } from './metadata'
 
-export interface RepositoryOptions<P> extends RelaterOptions<P> {
-  name: string
-  id: {
-    property: string | symbol,
-    sourceKey: string,
-  }
-  indexes: {
-    name: string,
-    indexer(entity: P): string,
-  }[]
-  generatedValues: {
-    property: string | symbol,
-    strategy: string,
-  }[]
+
+export type TableIndex<TEntity> = TableColumnIndex<TEntity> | TableTextIndex<TEntity>
+
+export interface TableColumnIndex<TEntity> {
+  type: 'column'
+  value: keyof TEntity
 }
 
-export interface RetrieveOptions {
-  limit?: number
-  // offset?: number
-  after?: string
-  index?: string
-  desc?: boolean
+export interface TableTextIndex<TEntity> {
+  type: 'text'
+  value: string
 }
 
-export interface RetrieveResult<P> {
-  nodes: {
-    cursor: string,
-    node: P,
-  }[]
-  endCursor?: string
+export interface RepositoryOptions<TEntity> extends MetadataEntity {
+  columns: MetadataColumn[]
 }
 

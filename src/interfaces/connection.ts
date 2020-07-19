@@ -25,27 +25,31 @@ export interface ConnectionTableOption {
 }
 
 export interface QueryParams {
-  pk: DynamoKey
-  tableName?: string
+  aliasName?: string
   limit?: number
-  // offset?: number
-  // after?: DynamoCursor
+  indexName?: string
+  exclusiveStartKey?: DynamoCursor
   scanIndexForward?: boolean
 }
 
-export interface CountOptions {
+export interface QueryResult<TResult> {
+  lastEvaluatedKey?: DynamoCursor
+  nodes: DynamoNode<TResult>[]
+}
+
+export interface CountParams {
   aliasName?: string
 }
 
-export interface GetItemOptions {
+export interface GetItemParams {
   aliasName?: string
 }
 
-export interface PutItemOptions {
+export interface PutItemParams {
   aliasName?: string
 }
 
-export interface DeleteItemOptions {
+export interface DeleteItemParams {
   aliasName?: string
 }
 

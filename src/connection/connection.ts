@@ -201,7 +201,7 @@ export class Connection {
     return this.client.deleteItem({
       TableName: option.tableName,
       Key: this._createDynamoKey(cursor, option),
-      // ReturnValues // @TODO
+      // @TODO ReturnValues
     }).promise().then(({ Attributes }) => {
       return Attributes ? this._createDynamoNode<TData>(Attributes, option) : null
     })
