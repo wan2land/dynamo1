@@ -3,13 +3,11 @@ import { Connection } from './connection'
 async function createSafeConnection(tableName: string): Promise<Connection> {
   const ddb = await global.createDynamoClient()
   const connection = new Connection(ddb, {
-    default: {
+    tables: [{
       tableName,
-      partitionKey: 'pk',
-      partitionKeyType: String,
-      sortKey: 'sk',
-      sortKeyType: String,
-    },
+      pk: { name: 'pk' },
+      sk: { name: 'sk' },
+    }],
   })
   const tableNames = await ddb.listTables().promise().then(({ TableNames }) => TableNames ?? [])
   if (tableNames.includes(tableName)) {
@@ -276,5 +274,107 @@ describe('testsuite of connection/connection', () => {
     }
 
     await expect(connection.count('count-users')).resolves.toEqual(10)
+  })
+
+  it('test query', async () => {
+    const connection = await connectionPromise
+
+    await expect(connection.query('query-users')).resolves.toEqual({
+      nodes: [],
+    })
+
+    for (let i = 0; i < 10; i++) {
+      await connection.putItem({
+        cursor: { pk: 'query-users', sk: `query-users_${i}` },
+        data: {
+          value: `this is test query ${i}`,
+        },
+      })
+    }
+
+    const result1 = await connection.query('query-users', { limit: 5 })
+    expect(result1).toEqual({
+      lastEvaluatedKey: {
+        pk: 'query-users',
+        sk: 'query-users_4',
+      },
+      nodes: [
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_0' },
+          data: {
+            value: 'this is test query 0',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_1' },
+          data: {
+            value: 'this is test query 1',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_2' },
+          data: {
+            value: 'this is test query 2',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_3' },
+          data: {
+            value: 'this is test query 3',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_4' },
+          data: {
+            value: 'this is test query 4',
+          },
+        },
+      ],
+    })
+
+
+    const result2 = await connection.query('query-users', { limit: 5, exclusiveStartKey: result1.lastEvaluatedKey })
+    expect(result2).toEqual({
+      lastEvaluatedKey: {
+        pk: 'query-users',
+        sk: 'query-users_9',
+      },
+      nodes: [
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_5' },
+          data: {
+            value: 'this is test query 5',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_6' },
+          data: {
+            value: 'this is test query 6',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_7' },
+          data: {
+            value: 'this is test query 7',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_8' },
+          data: {
+            value: 'this is test query 8',
+          },
+        },
+        {
+          cursor: { pk: 'query-users', sk: 'query-users_9' },
+          data: {
+            value: 'this is test query 9',
+          },
+        },
+      ],
+    })
+    const result3 = await connection.query('query-users', { limit: 5, exclusiveStartKey: result2.lastEvaluatedKey })
+    expect(result3).toEqual({
+      nodes: [],
+    })
   })
 })

@@ -1,68 +1,53 @@
 import { DynamoDB } from 'aws-sdk'
 import { WriteRequest } from 'aws-sdk/clients/dynamodb'
 
-import { DynamoKey, DynamoKeyType } from '../interfaces/common'
+import { DynamoKey } from '../interfaces/common'
 import {
-  CountOptions,
-  DeleteItemOptions,
+  CountParams,
+  DeleteItemParams,
   DynamoCursor,
   DynamoNode,
-  GetItemOptions,
-  PutItemOptions,
+  GetItemParams,
+  PutItemParams,
+  ConnectionOptions,
+  ConnectionTableOption,
+  QueryParams,
+  QueryResult,
 } from '../interfaces/connection'
 import { Repository } from '../repository/repository'
 import { fromDynamoMap } from '../utils/from-dynamo'
-import { toDynamo, toDynamoMap } from '../utils/to-dynamo'
+import { toDynamoMap, toDynamo } from '../utils/to-dynamo'
 import { assertIndexableColumnType } from '../utils/type'
-
-export interface ConnectionOptions {
-  [aliasName: string]: {
-    tableName: string,
-    partitionKey: string,
-    partitionKeyType?: DynamoKeyType,
-    sortKey?: string,
-    sortKeyType?: DynamoKeyType,
-  }
-}
-
-export interface TableOption {
-  tableName: string
-  partitionKey: string
-  partitionKeyType: DynamoKeyType
-  sortKey?: string
-  sortKeyType?: DynamoKeyType
-}
 
 export class Connection {
 
-  public options: Map<string, TableOption>
+  public tableOptions: Map<string, ConnectionTableOption>
 
   public repositories = new Map<Function, Repository<any>>()
 
-  public constructor(
-    public client: DynamoDB,
-    options: ConnectionOptions,
-  ) {
-    this.options = new Map()
-    for (const [aliasName, option] of Object.entries(options)) {
-      this.options.set(aliasName, {
-        tableName: option.tableName,
-        partitionKey: option.partitionKey,
-        partitionKeyType: option.partitionKeyType ?? String,
-        sortKey: option.sortKey,
-        sortKeyType: option.sortKey && !option.sortKeyType ? String : undefined,
-      })
+  public constructor(public client: DynamoDB, options: ConnectionOptions) {
+    if (options.tables.length === 0) {
+      throw new Error('At least one table must be defined.')
+    }
+
+    this.tableOptions = new Map()
+    this.tableOptions.set('default', options.tables[0])
+    for (const tableOption of options.tables) {
+      if (tableOption.aliasName) {
+        this.tableOptions.set(tableOption.aliasName, tableOption)
+      }
+      this.tableOptions.set(tableOption.tableName, tableOption)
     }
   }
 
-  public count(pk: DynamoKey, options: CountOptions = {}): Promise<number> {
-    const option = this._findOptionByAliasName(options.tableName)
+  public count(pk: DynamoKey, options: CountParams = {}): Promise<number> {
+    const option = this._findOptionByAliasName(options.aliasName)
     return this.client.query({
       TableName: option.tableName,
       Select: 'COUNT',
       KeyConditionExpression: '#pk = :pk',
       ExpressionAttributeNames: {
-        '#pk': option.partitionKey,
+        '#pk': option.pk.name,
       },
       ExpressionAttributeValues: {
         ':pk': toDynamo(pk),
@@ -70,32 +55,66 @@ export class Connection {
     }).promise().then(({ Count }) => Count ?? 0)
   }
 
-  getItem<TResult extends Record<string, any>>(cursor: DynamoCursor, options: GetItemOptions = {}): Promise<DynamoNode<TResult> | null> {
-    const option = this._findOptionByAliasName(options.tableName)
+  public query<TData extends Record<string, any>>(pk: DynamoKey, params: QueryParams = {}): Promise<QueryResult<TData>> {
+    const option = this._findOptionByAliasName(params.aliasName)
 
-    assertIndexableColumnType(option.partitionKeyType, cursor.pk)
-    if (option.sortKeyType) {
-      assertIndexableColumnType(option.sortKeyType, cursor.sk)
+    return this.client.query({
+      TableName: option.tableName,
+      Limit: params.limit,
+      KeyConditionExpression: '#pk = :pk',
+      IndexName: params.indexName,
+      ExpressionAttributeNames: {
+        '#pk': option.pk.name,
+      },
+      ExpressionAttributeValues: {
+        ':pk': toDynamo(pk),
+      },
+      ExclusiveStartKey: params.exclusiveStartKey ? this._createDynamoKey(params.exclusiveStartKey, option) : undefined,
+      ScanIndexForward: params.scanIndexForward,
+    }).promise().then(({ Items, LastEvaluatedKey }) => {
+      const nodes = (Items ?? []).map(item => this._createDynamoNode<TData>(item, option))
+      if (LastEvaluatedKey) {
+        const lastKey = fromDynamoMap(LastEvaluatedKey)
+        return {
+          nodes,
+          lastEvaluatedKey: {
+            pk: lastKey[option.pk.name],
+            ...option.sk ? { sk: lastKey[option.sk.name] } : {},
+          },
+        }
+      }
+      return {
+        nodes,
+      }
+    })
+  }
+
+  getItem<TData extends Record<string, any>>(cursor: DynamoCursor, params: GetItemParams = {}): Promise<DynamoNode<TData> | null> {
+    const option = this._findOptionByAliasName(params.aliasName)
+
+    assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
+    if (option.sk) {
+      assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
     }
 
     return this.client.getItem({
       TableName: option.tableName,
       Key: this._createDynamoKey(cursor, option),
-    }).promise().then<DynamoNode<TResult> | null>(({ Item }) => {
-      return Item ? this._createDynamoNode(Item, option) : null
+    }).promise().then(({ Item }) => {
+      return Item ? this._createDynamoNode<TData>(Item, option) : null
     })
   }
 
-  getManyItems<TResult extends Record<string, any>>(cursors: DynamoCursor[], options: GetItemOptions = {}): Promise<DynamoNode<TResult>[]> {
+  getManyItems<TData extends Record<string, any>>(cursors: DynamoCursor[], params: GetItemParams = {}): Promise<DynamoNode<TData>[]> {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
 
-    const option = this._findOptionByAliasName(options.tableName)
+    const option = this._findOptionByAliasName(params.aliasName)
     for (const cursor of cursors) {
-      assertIndexableColumnType(option.partitionKeyType, cursor.pk)
-      if (option.sortKeyType) {
-        assertIndexableColumnType(option.sortKeyType, cursor.sk)
+      assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
+      if (option.sk) {
+        assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
       }
     }
 
@@ -106,42 +125,42 @@ export class Connection {
         },
       },
     }).promise().then(({ Responses }) => {
-      return (Responses?.[option.tableName] ?? []).map(item => this._createDynamoNode(item, option))
+      return (Responses?.[option.tableName] ?? []).map(item => this._createDynamoNode<TData>(item, option))
     })
   }
 
-  putItem<TData extends Record<string, any>>(node: DynamoNode<TData>, options: PutItemOptions = {}): Promise<DynamoNode<TData> | null> {
-    const option = this._findOptionByAliasName(options.tableName)
+  putItem<TData extends Record<string, any>>(node: DynamoNode<TData>, params: PutItemParams = {}): Promise<DynamoNode<TData> | null> {
+    const option = this._findOptionByAliasName(params.aliasName)
 
-    assertIndexableColumnType(option.partitionKeyType, node.cursor.pk)
-    if (option.sortKeyType) {
-      assertIndexableColumnType(option.sortKeyType, node.cursor.sk)
+    assertIndexableColumnType(option.pk.type ?? String, node.cursor.pk)
+    if (option.sk) {
+      assertIndexableColumnType(option.sk.type ?? String, node.cursor.sk)
     }
 
     return this.client.putItem({
       TableName: option.tableName,
       Item: toDynamoMap({
-        [option.partitionKey]: node.cursor.pk,
-        ...option.sortKey ? { [option.sortKey]: node.cursor.sk } : {},
+        [option.pk.name]: node.cursor.pk,
+        ...option.sk ? { [option.sk.name]: node.cursor.sk } : {},
         ...node.data,
       }),
       // TODO ConditionExpression
       // TODO ReturnValues:
-    }).promise().then<DynamoNode<TData> | null>(({ Attributes }) => {
-      return Attributes ? this._createDynamoNode(Attributes, option) : null
+    }).promise().then(({ Attributes }) => {
+      return Attributes ? this._createDynamoNode<TData>(Attributes, option) : null
     })
   }
 
-  putManyItems<TData extends Record<string, any>>(nodes: DynamoNode<TData>[] = [], options: PutItemOptions = {}): Promise<boolean[]> {
+  putManyItems<TData extends Record<string, any>>(nodes: DynamoNode<TData>[] = [], params: PutItemParams = {}): Promise<boolean[]> {
     if (nodes.length === 0) {
       return Promise.resolve([])
     }
 
-    const option = this._findOptionByAliasName(options.tableName)
+    const option = this._findOptionByAliasName(params.aliasName)
     for (const node of nodes) {
-      assertIndexableColumnType(option.partitionKeyType, node.cursor.pk)
-      if (option.sortKeyType) {
-        assertIndexableColumnType(option.sortKeyType, node.cursor.sk)
+      assertIndexableColumnType(option.pk.type ?? String, node.cursor.pk)
+      if (option.sk) {
+        assertIndexableColumnType(option.sk.type ?? String, node.cursor.sk)
       }
     }
 
@@ -150,8 +169,8 @@ export class Connection {
         [option.tableName]: nodes.map(({ cursor, data }): WriteRequest => ({
           PutRequest: {
             Item: toDynamoMap({
-              [option.partitionKey]: cursor.pk,
-              ...option.sortKey ? { [option.sortKey]: cursor.sk } : {},
+              [option.pk.name]: cursor.pk,
+              ...option.sk ? { [option.sk.name]: cursor.sk } : {},
               ...data,
             }),
           },
@@ -162,21 +181,21 @@ export class Connection {
         .filter(({ PutRequest }) => PutRequest)
         .map(({ PutRequest }) => fromDynamoMap(PutRequest!.Item))
 
-      const pk = option.partitionKey
-      if (option.sortKey) {
-        const sk = option.sortKey
-        return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[pk] === cursor.pk && item[sk] === cursor.sk))
+      const pk = option.pk
+      if (option.sk) {
+        const optionSk = option.sk
+        return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[pk.name] === cursor.pk && item[optionSk.name] === cursor.sk))
       }
-      return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[pk] === cursor.pk))
+      return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[pk.name] === cursor.pk))
     })
   }
 
-  public deleteItem<TResult extends Record<string, any>>(cursor: DynamoCursor, options: DeleteItemOptions = {}): Promise<DynamoNode<TResult> | null> {
-    const option = this._findOptionByAliasName(options.tableName)
+  public deleteItem<TData extends Record<string, any>>(cursor: DynamoCursor, params: DeleteItemParams = {}): Promise<DynamoNode<TData> | null> {
+    const option = this._findOptionByAliasName(params.aliasName)
 
-    assertIndexableColumnType(option.partitionKeyType, cursor.pk)
-    if (option.sortKeyType) {
-      assertIndexableColumnType(option.sortKeyType, cursor.sk)
+    assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
+    if (option.sk) {
+      assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
     }
 
     return this.client.deleteItem({
@@ -184,20 +203,20 @@ export class Connection {
       Key: this._createDynamoKey(cursor, option),
       // ReturnValues // @TODO
     }).promise().then(({ Attributes }) => {
-      return Attributes ? this._createDynamoNode(Attributes, option) : null
+      return Attributes ? this._createDynamoNode<TData>(Attributes, option) : null
     })
   }
 
-  public deleteManyItems(cursors: DynamoCursor[], options: DeleteItemOptions = {}): Promise<boolean[]> {
+  public deleteManyItems(cursors: DynamoCursor[], params: DeleteItemParams = {}): Promise<boolean[]> {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
 
-    const option = this._findOptionByAliasName(options.tableName)
+    const option = this._findOptionByAliasName(params.aliasName)
     for (const cursor of cursors) {
-      assertIndexableColumnType(option.partitionKeyType, cursor.pk)
-      if (option.sortKeyType) {
-        assertIndexableColumnType(option.sortKeyType, cursor.sk)
+      assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
+      if (option.sk) {
+        assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
       }
     }
 
@@ -216,36 +235,35 @@ export class Connection {
         .filter(({ DeleteRequest }) => DeleteRequest)
         .map(({ DeleteRequest }) => fromDynamoMap(DeleteRequest!.Key))
 
-      const pk = option.partitionKey
-      if (option.sortKey) {
-        const sk = option.sortKey
-        return cursors.map((cursor) => !unprocessedKeys.find((item) => item[pk] === cursor.pk && item[sk] === cursor.sk))
+      if (option.sk) {
+        const optionSk = option.sk
+        return cursors.map((cursor) => !unprocessedKeys.find((item) => item[option.pk.name] === cursor.pk && item[optionSk.name] === cursor.sk))
       }
-      return cursors.map((cursor) => !unprocessedKeys.find((item) => item[pk] === cursor.pk))
+      return cursors.map((cursor) => !unprocessedKeys.find((item) => item[option.pk.name] === cursor.pk))
     })
   }
 
-  _createDynamoKey(cursor: DynamoCursor, option: TableOption): DynamoDB.Key {
+  _createDynamoKey(cursor: DynamoCursor, option: ConnectionTableOption): DynamoDB.Key {
     return toDynamoMap({
-      [option.partitionKey]: cursor.pk,
-      ...option.sortKey ? { [option.sortKey]: cursor.sk } : {},
+      [option.pk.name]: cursor.pk,
+      ...option.sk ? { [option.sk.name]: cursor.sk } : {},
     })
   }
 
-  _createDynamoNode<TResult>(data: DynamoDB.AttributeMap, option: TableOption): DynamoNode<TResult> {
+  _createDynamoNode<TData>(data: DynamoDB.AttributeMap, option: ConnectionTableOption): DynamoNode<TData> {
     const parsed = fromDynamoMap(data)
 
-    const cursor = { pk: parsed[option.partitionKey] } as DynamoCursor
-    delete parsed[option.partitionKey]
+    const cursor = { pk: parsed[option.pk.name] } as DynamoCursor
+    delete parsed[option.pk.name]
 
-    if (option.sortKey && option.sortKey in parsed) {
-      cursor.sk = parsed[option.sortKey]
-      delete parsed[option.sortKey]
+    if (option.sk && option.sk.name in parsed) {
+      cursor.sk = parsed[option.sk.name]
+      delete parsed[option.sk.name]
     }
-    return { cursor, data: parsed as TResult }
+    return { cursor, data: parsed as TData }
   }
 
-  _findOptionByAliasName(aliasName?: string): TableOption {
-    return this.options.get(aliasName ?? 'default') ?? this.options.entries().next().value
+  _findOptionByAliasName(aliasName?: string): ConnectionTableOption {
+    return this.tableOptions.get(aliasName ?? 'default') ?? this.tableOptions.entries().next().value
   }
 }

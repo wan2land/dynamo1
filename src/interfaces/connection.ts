@@ -1,20 +1,52 @@
-import { DynamoKey } from './common'
+import { DynamoKey, DynamoKeyType } from './common'
 
+export interface ConnectionOptions {
+  tables: ConnectionTableOption[]
+}
+
+export interface IndexType {
+  name: string
+  type?: DynamoKeyType
+}
+
+export interface ConnectionTableIndex {
+  name: string
+  pk: IndexType
+  sk?: IndexType
+}
+
+export interface ConnectionTableOption {
+  tableName: string
+  aliasName?: string
+  pk: IndexType
+  sk?: IndexType
+  gsi?: ConnectionTableIndex[]
+  // repositories: [Function, Function][]
+}
+
+export interface QueryParams {
+  pk: DynamoKey
+  tableName?: string
+  limit?: number
+  // offset?: number
+  // after?: DynamoCursor
+  scanIndexForward?: boolean
+}
 
 export interface CountOptions {
-  tableName?: string
+  aliasName?: string
 }
 
 export interface GetItemOptions {
-  tableName?: string
+  aliasName?: string
 }
 
 export interface PutItemOptions {
-  tableName?: string
+  aliasName?: string
 }
 
 export interface DeleteItemOptions {
-  tableName?: string
+  aliasName?: string
 }
 
 export interface DynamoNode<P> {
