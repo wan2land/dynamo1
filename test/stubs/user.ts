@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid'
 
-import { Column, Entity, column, text } from '../src'
+import { Column, Entity, column, text } from '../../src'
 
 @Entity<User>({
   name: 'users',

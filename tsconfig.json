@@ -17,9 +17,10 @@
     "experimentalDecorators": true
   },
   "files": [
-    "./types/jest.d.ts"
+    "types/jest.d.ts"
   ],
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "test/**/*",
   ]
 }

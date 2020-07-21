@@ -1,4 +1,4 @@
-import { Repository } from '../src'
+import { Repository } from '../../src'
 import { Article } from './article'
 
 

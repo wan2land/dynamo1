@@ -1,4 +1,4 @@
-import { Column, Entity, column, text } from '../src'
+import { Column, Entity, column, text } from '../../src'
 
 
 @Entity<Article>({
@@ -8,7 +8,7 @@ import { Column, Entity, column, text } from '../src'
 })
 export class Article {
 
-  @Column({ name: 'user_id' })
+  @Column({ name: 'id' })
   public id!: string
 
   @Column({ name: 'user_id' })

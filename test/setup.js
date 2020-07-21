@@ -1,6 +1,7 @@
 const { DynamoDB } = require('aws-sdk')
 const { exec } = require('child_process')
 
+
 function getDockerComposePort(service, port) {
   let cachedPort
   if (cachedPort) {

@@ -1,10 +1,9 @@
 import faker from 'faker'
 
-import { Article } from '../../stubs/article'
-import { User } from '../../stubs/user'
-import { Connection } from '../connection/connection'
-import { createOptions } from './create-options'
-import { Repository } from './repository'
+import { Connection } from '../../src/connection/connection'
+import { createOptions } from '../../src/repository/create-options'
+import { Repository } from '../../src/repository/repository'
+import { User } from '../stubs/user'
 
 
 async function createSafeConnection(tableName: string): Promise<Connection> {

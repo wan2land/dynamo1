@@ -1,4 +1,4 @@
-import { toDynamo, toDynamoMap } from './to-dynamo'
+import { toDynamo, toDynamoMap } from '../../src/utils/to-dynamo'
 
 describe('testsuite of utils/to-dynamo', () => {
 

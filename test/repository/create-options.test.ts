@@ -1,5 +1,5 @@
-import { User } from '../../stubs/user'
-import { createOptions } from './create-options'
+import { createOptions } from '../../src/repository/create-options'
+import { User } from '../stubs/user'
 
 
 describe('testsuite of repository/create-options', () => {
