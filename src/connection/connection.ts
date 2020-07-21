@@ -16,9 +16,8 @@ import {
 } from '../interfaces/connection'
 import { createOptions } from '../repository/create-options'
 import { Repository } from '../repository/repository'
-import { fromDynamoMap } from '../utils/from-dynamo'
-import { toDynamoMap, toDynamo } from '../utils/to-dynamo'
 import { assertIndexableColumnType } from '../utils/type'
+import { fromDynamoMap, toDynamo, attrsToDynamoNode, dynamoNodeToAttrs, dynamoCursorToKey } from './transformer'
 
 export class Connection {
 
@@ -84,10 +83,10 @@ export class Connection {
       ExpressionAttributeValues: {
         ':pk': toDynamo(pk),
       },
-      ExclusiveStartKey: params.exclusiveStartKey ? this._createDynamoKey(params.exclusiveStartKey, option) : undefined,
+      ExclusiveStartKey: params.exclusiveStartKey ? dynamoCursorToKey(params.exclusiveStartKey, option) : undefined,
       ScanIndexForward: params.scanIndexForward,
     }).promise().then(({ Items, LastEvaluatedKey }) => {
-      const nodes = (Items ?? []).map(item => this._createDynamoNode<TData>(item, option))
+      const nodes = (Items ?? []).map(item => attrsToDynamoNode<TData>(item, option))
       if (LastEvaluatedKey) {
         const lastKey = fromDynamoMap(LastEvaluatedKey)
         return {
@@ -114,9 +113,9 @@ export class Connection {
 
     return this.client.getItem({
       TableName: option.tableName,
-      Key: this._createDynamoKey(cursor, option),
+      Key: dynamoCursorToKey(cursor, option),
     }).promise().then(({ Item }) => {
-      return Item ? this._createDynamoNode<TData>(Item, option) : null
+      return Item ? attrsToDynamoNode<TData>(Item, option) : null
     })
   }
 
@@ -136,11 +135,11 @@ export class Connection {
     return this.client.batchGetItem({
       RequestItems: {
         [option.tableName]: {
-          Keys: cursors.map((cursor) => this._createDynamoKey(cursor, option)),
+          Keys: cursors.map((cursor) => dynamoCursorToKey(cursor, option)),
         },
       },
     }).promise().then(({ Responses }) => {
-      return (Responses?.[option.tableName] ?? []).map(item => this._createDynamoNode<TData>(item, option))
+      return (Responses?.[option.tableName] ?? []).map(item => attrsToDynamoNode<TData>(item, option))
     })
   }
 
@@ -154,15 +153,9 @@ export class Connection {
 
     return this.client.putItem({
       TableName: option.tableName,
-      Item: toDynamoMap({
-        [option.pk.name]: node.cursor.pk,
-        ...option.sk ? { [option.sk.name]: node.cursor.sk } : {},
-        ...node.data,
-      }),
-      // TODO ConditionExpression
-      // TODO ReturnValues:
+      Item: dynamoNodeToAttrs(node, option),
     }).promise().then(({ Attributes }) => {
-      return Attributes ? this._createDynamoNode<TData>(Attributes, option) : null
+      return Attributes ? attrsToDynamoNode<TData>(Attributes, option) : null
     })
   }
 
@@ -181,13 +174,9 @@ export class Connection {
 
     return this.client.batchWriteItem({
       RequestItems: {
-        [option.tableName]: nodes.map(({ cursor, data }): WriteRequest => ({
+        [option.tableName]: nodes.map<WriteRequest>(node => ({
           PutRequest: {
-            Item: toDynamoMap({
-              [option.pk.name]: cursor.pk,
-              ...option.sk ? { [option.sk.name]: cursor.sk } : {},
-              ...data,
-            }),
+            Item: dynamoNodeToAttrs(node, option),
           },
         })),
       },
@@ -215,10 +204,10 @@ export class Connection {
 
     return this.client.deleteItem({
       TableName: option.tableName,
-      Key: this._createDynamoKey(cursor, option),
+      Key: dynamoCursorToKey(cursor, option),
       // @TODO ReturnValues
     }).promise().then(({ Attributes }) => {
-      return Attributes ? this._createDynamoNode<TData>(Attributes, option) : null
+      return Attributes ? attrsToDynamoNode<TData>(Attributes, option) : null
     })
   }
 
@@ -240,7 +229,7 @@ export class Connection {
         [option.tableName]: cursors.map((cursor): WriteRequest => {
           return {
             DeleteRequest: {
-              Key: this._createDynamoKey(cursor, option),
+              Key: dynamoCursorToKey(cursor, option),
             },
           }
         }),
@@ -256,26 +245,6 @@ export class Connection {
       }
       return cursors.map((cursor) => !unprocessedKeys.find((item) => item[option.pk.name] === cursor.pk))
     })
-  }
-
-  _createDynamoKey(cursor: DynamoCursor, option: ConnectionTableOption): DynamoDB.Key {
-    return toDynamoMap({
-      [option.pk.name]: cursor.pk,
-      ...option.sk ? { [option.sk.name]: cursor.sk } : {},
-    })
-  }
-
-  _createDynamoNode<TData>(data: DynamoDB.AttributeMap, option: ConnectionTableOption): DynamoNode<TData> {
-    const parsed = fromDynamoMap(data)
-
-    const cursor = { pk: parsed[option.pk.name] } as DynamoCursor
-    delete parsed[option.pk.name]
-
-    if (option.sk && option.sk.name in parsed) {
-      cursor.sk = parsed[option.sk.name]
-      delete parsed[option.sk.name]
-    }
-    return { cursor, data: parsed as TData }
   }
 
   _findOptionByAliasName(aliasName?: string): ConnectionTableOption {
