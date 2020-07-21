@@ -1,3 +1,7 @@
+import { Article } from '../../stubs/article'
+import { ArticleRepository } from '../../stubs/article-repository'
+import { User } from '../../stubs/user'
+import { Repository } from '../repository/repository'
 import { Connection } from './connection'
 
 async function createSafeConnection(tableName: string): Promise<Connection> {
@@ -8,6 +12,9 @@ async function createSafeConnection(tableName: string): Promise<Connection> {
       pk: { name: 'pk' },
       sk: { name: 'sk' },
     }],
+    repositories: [
+      [Article, ArticleRepository],
+    ],
   })
   const tableNames = await ddb.listTables().promise().then(({ TableNames }) => TableNames ?? [])
   if (tableNames.includes(tableName)) {
@@ -32,6 +39,19 @@ describe('testsuite of connection/connection', () => {
 
   const TableName = 'dynamo1_connection_tests'
   const connectionPromise = createSafeConnection(TableName)
+
+  it('test getRepository', async () => {
+    const connection = await connectionPromise
+
+    const userRepo = connection.getRepository(User)
+    expect(userRepo).toBeInstanceOf(Repository)
+    expect(connection.getRepository(User)).toBe(userRepo)
+
+    const articleRepo = connection.getRepository(Article)
+    expect(articleRepo).toBeInstanceOf(Repository)
+    expect(articleRepo).toBeInstanceOf(ArticleRepository)
+    expect(connection.getRepository(Article)).toBe(articleRepo)
+  })
 
   it('test getItem', async () => {
     const connection = await connectionPromise

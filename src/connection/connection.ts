@@ -1,7 +1,7 @@
 import { DynamoDB } from 'aws-sdk'
 import { WriteRequest } from 'aws-sdk/clients/dynamodb'
 
-import { DynamoKey } from '../interfaces/common'
+import { DynamoKey, ConstructType } from '../interfaces/common'
 import {
   CountParams,
   DeleteItemParams,
@@ -14,6 +14,7 @@ import {
   QueryParams,
   QueryResult,
 } from '../interfaces/connection'
+import { createOptions } from '../repository/create-options'
 import { Repository } from '../repository/repository'
 import { fromDynamoMap } from '../utils/from-dynamo'
 import { toDynamoMap, toDynamo } from '../utils/to-dynamo'
@@ -21,16 +22,15 @@ import { assertIndexableColumnType } from '../utils/type'
 
 export class Connection {
 
-  public tableOptions: Map<string, ConnectionTableOption>
+  tableOptions = new Map<string, ConnectionTableOption>()
+  definedRepos = new Map<ConstructType<any>, ConstructType<Repository<any>>>()
+  cachedRepos = new Map<Function, Repository<any>>()
 
-  public repositories = new Map<Function, Repository<any>>()
-
-  public constructor(public client: DynamoDB, options: ConnectionOptions) {
+  constructor(public client: DynamoDB, options: ConnectionOptions) {
     if (options.tables.length === 0) {
       throw new Error('At least one table must be defined.')
     }
 
-    this.tableOptions = new Map()
     this.tableOptions.set('default', options.tables[0])
     for (const tableOption of options.tables) {
       if (tableOption.aliasName) {
@@ -38,9 +38,14 @@ export class Connection {
       }
       this.tableOptions.set(tableOption.tableName, tableOption)
     }
+    for (const [entity, repo] of options.repositories ?? []) {
+      this.definedRepos.set(entity, repo)
+    }
   }
 
-  public count(pk: DynamoKey, options: CountParams = {}): Promise<number> {
+  // TODO scan
+
+  count(pk: DynamoKey, options: CountParams = {}): Promise<number> {
     const option = this._findOptionByAliasName(options.aliasName)
     return this.client.query({
       TableName: option.tableName,
@@ -55,7 +60,17 @@ export class Connection {
     }).promise().then(({ Count }) => Count ?? 0)
   }
 
-  public query<TData extends Record<string, any>>(pk: DynamoKey, params: QueryParams = {}): Promise<QueryResult<TData>> {
+  getRepository<TEntity extends object, R extends Repository<TEntity>>(entityCtor: ConstructType<TEntity>): R {
+    let repository = this.cachedRepos.get(entityCtor)
+    if (!repository) {
+      const RepoCtor = this.definedRepos.get(entityCtor) ?? Repository
+      repository = new RepoCtor(this, createOptions(entityCtor))
+      this.cachedRepos.set(entityCtor, repository)
+    }
+    return repository as R
+  }
+
+  public query<TData extends Record<string, any>>(pk: DynamoKey, params: QueryParams = {}): Promise<QueryResult<DynamoNode<TData>>> {
     const option = this._findOptionByAliasName(params.aliasName)
 
     return this.client.query({

@@ -1,7 +1,11 @@
-import { DynamoKey, DynamoKeyType } from './common'
+import { Repository } from '../repository/repository'
+import { DynamoKey, DynamoKeyType, ConstructType } from './common'
+
+export type RepositoryPair<TEntity extends object> = [ConstructType<TEntity>, ConstructType<Repository<TEntity>>]
 
 export interface ConnectionOptions {
   tables: ConnectionTableOption[]
+  repositories?: RepositoryPair<any>[]
 }
 
 export interface IndexType {
@@ -21,7 +25,6 @@ export interface ConnectionTableOption {
   pk: IndexType
   sk?: IndexType
   gsi?: ConnectionTableIndex[]
-  // repositories: [Function, Function][]
 }
 
 export interface QueryParams {
