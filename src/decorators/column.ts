@@ -1,10 +1,8 @@
-import { ColumnTypeConstructor, MaybePromise } from '../interfaces/common'
+import { MaybePromise } from '../interfaces/common'
 import { MetadataStorage } from '../metadata/storage'
 
 export interface ColumnParams<TEntity> {
   name?: string
-  type?: ColumnTypeConstructor
-  nullable?: boolean
   onCreate?: (entity: TEntity) => MaybePromise<any>
   onUpdate?: (entity: TEntity) => MaybePromise<any>
   metadataStorage?: MetadataStorage
@@ -24,8 +22,6 @@ export function Column<TEntity = Record<string, any>>(params: ColumnParams<TEnti
       target: target.constructor,
       property,
       name: params.name ?? (typeof property === 'string' ? property : property.toString()),
-      type: params.type ?? String,
-      nullable: params.nullable ?? false,
       onCreate: params.onCreate,
       onUpdate: params.onUpdate,
     })
