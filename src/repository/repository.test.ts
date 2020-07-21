@@ -1,203 +1,207 @@
 import faker from 'faker'
 
+import { Article } from '../../stubs/article'
 import { User } from '../../stubs/user'
 import { Connection } from '../connection/connection'
-import { DynamoCursor } from '../interfaces/connection'
 import { createOptions } from './create-options'
 import { Repository } from './repository'
 
-async function createSafeConnection(table: string): Promise<Connection> {
+
+async function createSafeConnection(tableName: string): Promise<Connection> {
   const ddb = await global.createDynamoClient()
-  const connection = new Connection(ddb, { table })
-  await connection.initialize({
-    BillingMode: 'PAY_PER_REQUEST',
+  const connection = new Connection(ddb, {
+    tables: [{
+      tableName,
+      pk: { name: 'pk' },
+      sk: { name: 'sk' },
+    }],
   })
+  const tableNames = await ddb.listTables().promise().then(({ TableNames }) => TableNames ?? [])
+  if (tableNames.includes(tableName)) {
+    await ddb.deleteTable({ TableName: tableName }).promise()
+  }
+  await ddb.createTable({
+    TableName: tableName,
+    KeySchema: [
+      { AttributeName: 'pk', KeyType: 'HASH' },
+      { AttributeName: 'sk', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'pk', AttributeType: 'S' },
+      { AttributeName: 'sk', AttributeType: 'S' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  }).promise()
   return connection
 }
 
 
-const TableName = 'dynamo1_service'
-const range = (start: number, end: number) => Array.from({ length: end - start }, (_, k) => k + start)
-
-function encodeBase64(cursor: DynamoCursor): string {
-  return Buffer.from(JSON.stringify(cursor)).toString('base64')
+function range(count: number): number[] {
+  return [...new Array(count).keys()]
 }
 
-function createFakeUser() {
-  return {
-    username: faker.internet.userName(),
-    email: faker.internet.email(),
-    createdAt: new Date().getTime(),
+function sortBy<T>(key: keyof T) {
+  return (a: T, b: T) => {
+    if (a[key] === b[key]) {
+      return 0
+    }
+    return a[key] > b[key] ? 1 : -1
   }
 }
 
 describe('testsuite of repository/repository', () => {
+
+  const TableName = 'dynamo1_repository_tests'
+  const connectionPromise = createSafeConnection(TableName)
+
   it('test create', async () => {
-    const connection = await createSafeConnection(TableName)
+    const connection = await connectionPromise
     const repository = new Repository(connection, createOptions(User))
-    const fakeUser = createFakeUser()
 
-    const user = await repository.create(fakeUser)
+    const user1 = repository.create()
 
-    expect(user).toEqual({
-      id: user.id, // :-)
+    expect(user1).toEqual({
+      id: null,
+      username: null,
+      email: null,
+      updatedAt: null,
+      createdAt: null,
+    })
+    expect(user1).toBeInstanceOf(User)
+
+
+    const fakeUser = {
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    }
+
+    const user2 = repository.create(fakeUser)
+
+    expect(user2).toEqual({
+      id: null,
       username: fakeUser.username,
       email: fakeUser.email,
-      createdAt: fakeUser.createdAt,
+      updatedAt: null,
+      createdAt: null,
     })
-    expect(user).toBeInstanceOf(User)
-
-
-    expect(await connection.getItem('user', user.id)).toEqual({
-      hashid: 'user',
-      rangeid: user.id, // generated uuid
-      user_id: user.id,
-      email: fakeUser.email,
-      username: fakeUser.username,
-      created_at: fakeUser.createdAt,
-    })
-    expect(await connection.getItem('user__created', `${fakeUser.createdAt}__${user.id}`)).toEqual({
-      hashid: 'user__created',
-      rangeid: `${fakeUser.createdAt}__${user.id}`,
-      sourcetype: 'user',
-      sourceid: user.id, // generated uuid
-    })
-
-    await connection.deleteManyItems([
-      { hashKey: 'user', rangeKey: user.id },
-      { hashKey: 'user__created', rangeKey: `${fakeUser.createdAt}__${user.id}` },
-    ])
+    expect(user2).toBeInstanceOf(User)
   })
 
-
-  it('test find', async () => {
-    const connection = await createSafeConnection(TableName)
+  it('test create and persist', async () => {
+    const connection = await connectionPromise
     const repository = new Repository(connection, createOptions(User))
-    const fakeUser = createFakeUser()
 
-    const user = await repository.create(fakeUser)
-    const foundUser = await repository.find(user.id)
+    const now = new Date().getTime()
 
-    expect(user).toEqual(foundUser)
-    expect(foundUser).toEqual({
+    const fakeUser = {
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    }
+
+    const user = await repository.persist(repository.create(fakeUser))
+
+    expect(user.id).toHaveLength(36) // uuid
+    expect(user.createdAt).toBeGreaterThanOrEqual(now)
+    expect(user.createdAt).toBeLessThan(now + 1000)
+    expect(user.updatedAt).toBeGreaterThanOrEqual(now)
+    expect(user.updatedAt).toBeLessThan(now + 1000)
+
+    expect(user).toEqual({
       id: user.id,
       username: fakeUser.username,
       email: fakeUser.email,
-      createdAt: fakeUser.createdAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     })
-    expect(foundUser).toBeInstanceOf(User)
+    expect(user).toBeInstanceOf(User)
 
-
-    await connection.deleteManyItems([
-      { hashKey: 'user', rangeKey: user.id },
-      { hashKey: 'user__created', rangeKey: `${fakeUser.createdAt}__${user.id}` },
-    ])
+    await expect(connection.getItem({ pk: 'users', sk: user.id })).resolves.toEqual({
+      cursor: {
+        pk: 'users',
+        sk: user.id,
+      },
+      data: {
+        user_id: user.id,
+        username: fakeUser.username,
+        email: fakeUser.email,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+    })
   })
 
+  it('test assign', async () => {
+    const connection = await connectionPromise
+    const repository = new Repository(connection, createOptions(User))
+
+    const fakeUser = {
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    }
+
+    const user = repository.create()
+    repository.assign(user, fakeUser)
+
+    expect(user).toEqual({
+      id: null,
+      username: fakeUser.username,
+      email: fakeUser.email,
+      updatedAt: null,
+      createdAt: null,
+    })
+    expect(user).toBeInstanceOf(User)
+  })
+
+
+  it('test findOne', async () => {
+    const connection = await createSafeConnection(TableName)
+    const repository = new Repository(connection, createOptions(User))
+    const fakeUser = {
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    }
+
+    const user = await repository.persist(repository.create(fakeUser))
+
+    const foundUser = await repository.findOne({ id: user.id })
+
+    expect(user).toEqual(foundUser)
+    expect(foundUser).toBeInstanceOf(User)
+  })
+
+
+  it('test findMany', async () => {
+    const connection = await createSafeConnection(TableName)
+    const repository = new Repository(connection, createOptions(User))
+
+    const users = await repository.persist(range(10).map(_ => repository.create({
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    })))
+
+    const foundUsers = await repository.findMany()
+
+    expect(foundUsers.nodes.length).toEqual(10)
+    expect(users.sort(sortBy('id'))).toEqual(foundUsers.nodes.sort(sortBy('id')))
+    for (const foundUser of foundUsers.nodes) {
+      expect(foundUser).toBeInstanceOf(User)
+    }
+  })
 
   it('test remove', async () => {
     const connection = await createSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
-    const fakeUser = createFakeUser()
+    const fakeUser = {
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    }
 
-    const user = await repository.create(fakeUser)
+    const user = await repository.persist(repository.create(fakeUser))
 
-    expect(await repository.find(user.id)).toEqual(user) // exists
+    await expect(repository.findOne({ id: user.id })).resolves.toEqual(user) // exists
 
-    // exists!
-    expect(await connection.getItem('user', user.id)).not.toEqual(null)
-    expect(await connection.getItem('user__created', `${fakeUser.createdAt}__${user.id}`)).not.toEqual(null)
+    await expect(repository.remove(user)).resolves.toEqual(user) // return void
 
-
-    expect(await repository.remove(user)).toBeUndefined() // return void
-
-    // not exists!
-    expect(await connection.getItem('user', user.id)).toEqual(null)
-    expect(await connection.getItem('user__created', `${fakeUser.createdAt}__${user.id}`)).toEqual(null)
-  })
-
-
-  it('test retrieve', async () => {
-    const connection = await createSafeConnection(TableName)
-    const repository = new Repository(connection, createOptions(User))
-
-    // clean
-    // await Promise.all((await repository.retrieve({limit: 100})).nodes.map(node => repository.remove(node.node)))
-
-    const users = await Promise.all(range(0, 20).map(() => repository.create(createFakeUser())))
-
-    const result1 = await repository.retrieve({ limit: 5 })
-    const result2 = await repository.retrieve({ after: result1.endCursor })
-
-    // all delete
-    await Promise.all(users.map(user => repository.remove(user)))
-
-    const sortedUsers = users.sort((a, b) => a.id > b.id ? 1 : -1)
-    expect(result1).toEqual({
-      nodes: sortedUsers.slice(0, 5).map(user => ({
-        cursor: encodeBase64({ hashKey: 'user', rangeKey: user.id }),
-        node: user,
-      })),
-      endCursor: encodeBase64({ hashKey: 'user', rangeKey: sortedUsers[4].id }),
-    })
-    expect(result2).toEqual({
-      nodes: sortedUsers.slice(5).map(user => ({
-        cursor: encodeBase64({ hashKey: 'user', rangeKey: user.id }),
-        node: user,
-      })),
-    })
-  })
-
-
-  it('test retrieve by index', async () => {
-    const connection = await createSafeConnection(TableName)
-    const repository = new Repository(connection, createOptions(User))
-
-    // clean
-    // await Promise.all((await repository.retrieve({limit: 100})).nodes.map(node => repository.remove(node.node)))
-
-    const users = await Promise.all(range(0, 10).map(() => repository.create(createFakeUser())))
-
-    const result1 = await repository.retrieve({ limit: 5, index: 'created', desc: true })
-    const result2 = await repository.retrieve({ after: result1.endCursor, index: 'created', desc: true })
-
-    // all delete
-    await Promise.all(users.map(user => repository.remove(user)))
-
-    const sortedUsers = users.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
-
-    expect(result1).toEqual({
-      nodes: sortedUsers.slice(0, 5).map(user => ({
-        cursor: encodeBase64({ hashKey: 'user__created', rangeKey: `${user.createdAt}__${user.id}` }),
-        node: user,
-      })),
-      endCursor: encodeBase64({ hashKey: 'user__created', rangeKey: `${sortedUsers[4].createdAt}__${sortedUsers[4].id}` }),
-    })
-    expect(result2).toEqual({
-      nodes: sortedUsers.slice(5).map(user => ({
-        cursor: encodeBase64({ hashKey: 'user__created', rangeKey: `${user.createdAt}__${user.id}` }),
-        node: user,
-      })),
-    })
-  })
-
-
-  it('test persist(update)', async () => {
-    const connection = await createSafeConnection(TableName)
-    const repository = new Repository(connection, createOptions(User))
-
-    const fakeUser = createFakeUser()
-
-    const user = await repository.create(fakeUser)
-    user.email = 'corgidisco+updated@gmail.com'
-
-    expect(await repository.persist(user)).toBeUndefined() // return void
-
-    const foundUser = (await repository.find(user.id))!
-
-    expect(foundUser.email).toEqual('corgidisco+updated@gmail.com')
-    expect(foundUser).toEqual(user)
-
-    await repository.remove(user)
+    await expect(repository.findOne({ id: user.id })).resolves.toBeNull()
   })
 })

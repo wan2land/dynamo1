@@ -26,6 +26,8 @@ export function Column<TEntity = Record<string, any>>(params: ColumnParams<TEnti
       name: params.name ?? (typeof property === 'string' ? property : property.toString()),
       type: params.type ?? String,
       nullable: params.nullable ?? false,
+      onCreate: params.onCreate,
+      onUpdate: params.onUpdate,
     })
   }
 }

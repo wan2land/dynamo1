@@ -1,175 +1,156 @@
-import { Transformer } from 'relater'
-import { v4 as uuid } from 'uuid'
-
 import { Connection } from '../connection/connection'
-import { DynamoCursor } from '../interfaces/connection'
-import { RepositoryOptions, RetrieveOptions, RetrieveResult } from '../interfaces/repository'
+import { resolveIndex } from '../indexer/resolve-index'
+import { MaybeArray } from '../interfaces/common'
+import { QueryResult } from '../interfaces/connection'
+import { RepositoryOptions } from '../interfaces/repository'
 
+export class Repository<TEntity extends object> {
 
-function encodeBase64(cursor: DynamoCursor): string {
-  return Buffer.from(JSON.stringify(cursor)).toString('base64')
-}
+  persistEntities = new WeakSet<TEntity>()
 
-function decodeBase64(buffer: string): DynamoCursor {
-  return JSON.parse(Buffer.from(buffer, 'base64').toString('ascii'))
-}
-
-export class Repository<Entity> {
-
-  public transformer: Transformer<Entity>
-
-  public constructor(public connection: Connection, public options: RepositoryOptions<Entity>) {
-    this.transformer = new Transformer(options)
+  constructor(
+    public connection: Connection,
+    public options: RepositoryOptions<TEntity>,
+  ) {
   }
 
-  public async retrieve({ limit = 20, after, index, desc = false }: RetrieveOptions = {}): Promise<RetrieveResult<Entity>> {
-    let endCursor: DynamoCursor | undefined
-    const nodes: {cursor: string, node: Entity}[] = []
-    if (index) {
-      const indexes = await this.connection.query(`${this.options.name}__${index}`, {
-        limit,
-        after: after ? decodeBase64(after) : undefined,
-        desc,
-      })
-      const result = await this.connection.getManyItems(indexes.nodes.map(({ node }) => ({
-        hashKey: node.sourcetype,
-        rangeKey: node.sourceid,
-      })))
-      endCursor = indexes.endCursor
-      indexes.nodes.forEach(({ node, cursor }) => {
-        const foundNode = result.find((result) => {
-          return result[this.connection.options.hashKey] === node.sourcetype
-            && result[this.connection.options.rangeKey] === `${node.sourceid}`
-        })
-        if (foundNode) {
-          foundNode[this.options.id.sourceKey] = foundNode[this.connection.options.rangeKey]
-          nodes.push({
-            node: this.transformer.toEntity(foundNode),
-            cursor: encodeBase64(cursor),
-          })
-        }
-      })
-    } else {
-      const result = await this.connection.query(this.options.name, {
-        limit,
-        after: after ? decodeBase64(after) : undefined,
-        desc,
-      })
-      endCursor = result.endCursor
-      result.nodes.forEach(({ node, cursor }) => {
-        node[this.options.id.sourceKey] = node[this.connection.options.rangeKey]
-        nodes.push({
-          node: this.transformer.toEntity(node),
-          cursor: encodeBase64(cursor),
-        })
-      })
-    }
+  // TODO
+  // count
+  // createQueryBuilder(): QueryBuilder<TEntity>
+  // count(conditions?: FindConditions<Entity>): Promise<number>;
+  // scan(): Promise<TEntity[]>
 
-    if (endCursor) {
-      return {
-        nodes,
-        endCursor: encodeBase64(endCursor),
-      }
+  create(): TEntity
+  create(entityLike: Partial<TEntity>): TEntity
+  create(entityLike: Partial<TEntity> = {}): TEntity {
+    const entity = {} as any
+    Object.setPrototypeOf(entity, this.options.target.prototype)
+    for (const column of this.options.columns) {
+      entity[column.property] = (entityLike as any)[column.property] ?? null
     }
-    return {
-      nodes,
-    }
-  }
-
-  public async find(id: string): Promise<Entity | undefined> {
-    const node = await this.connection.getItem(this.options.name, id)
-    if (node) {
-      node[this.options.id.sourceKey] = id
-      return this.transformer.toEntity(node)
-    }
-
-  }
-
-  public async create(attrs: Partial<Entity>): Promise<Entity> {
-    const entity: any = { ...attrs }
-    for (const generatedValue of this.options.generatedValues) {
-      if (generatedValue.strategy === 'uuid') {
-        entity[generatedValue.property] = uuid()
-      }
-    }
-    Object.setPrototypeOf(entity, this.options.ctor.prototype)
-    const id = entity[this.options.id.property]
-    if (!id) {
-      throw new Error('id not defined!')
-    }
-    await this.connection.putItems([
-      {
-        cursor: {
-          hashKey: this.options.name,
-          rangeKey: id,
-        },
-        node: this.transformer.toPlain(entity as Entity),
-      },
-      ...this.options.indexes.map((index) => {
-        return {
-          cursor: {
-            hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: `${index.indexer(entity)}__${id}`,
-          },
-          node: {
-            sourcetype: this.options.name,
-            sourceid: id,
-          },
-        }
-      }),
-    ])
     return entity
   }
 
-  public async persist(entity: Entity): Promise<void> {
-    const id = (entity as any)[this.options.id.property]
-    if (!id) {
-      throw new Error('id not defined!')
-    }
-
-    // @todo remove legacy index
-    // await this.connection.deleteManyItems([])
-
-    await this.connection.putItems([
-      {
-        cursor: {
-          hashKey: this.options.name,
-          rangeKey: id,
-        },
-        node: this.transformer.toPlain(entity),
-      },
-      ...this.options.indexes.map((index) => {
-        return {
-          cursor: {
-            hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: `${index.indexer(entity)}__${id}`,
-          },
-          node: {
-            sourcetype: this.options.name,
-            sourceid: id,
-          },
-        }
-      }),
-    ])
+  assign(entity: TEntity, ...entityLikes: Partial<TEntity>[]): TEntity {
+    Object.assign(entity, ...entityLikes)
+    return entity
   }
 
-  public async remove(entity: Entity): Promise<void> {
-    const id = (entity as any)[this.options.id.property]
-    if (!id) {
-      throw new Error('id not defined!')
+  persist(entity: TEntity): Promise<TEntity>
+  persist(entities: TEntity[]): Promise<TEntity[]>
+  persist(entity: MaybeArray<TEntity>): Promise<MaybeArray<TEntity>> {
+    if (!Array.isArray(entity)) {
+      return this.persist([entity]).then(entities => entities[0])
     }
 
-    await this.connection.deleteManyItems([
-      {
-        hashKey: this.options.name,
-        rangeKey: id,
-      },
-      ...this.options.indexes.map((index) => {
-        return {
-          hashKey: `${this.options.name}__${index.name}`,
-          rangeKey: `${index.indexer(entity)}__${id}`,
+    const entities = entity
+    return Promise.all(entities.map(async (entity) => {
+      if (this.persistEntities.has(entity)) {
+        return Promise.all(this.options.columns.map(column => {
+          return column.onUpdate ? Promise.resolve(column.onUpdate(entity)).then((value) => { (entity as any)[column.property] = value }) : Promise.resolve()
+        }))
+      }
+      return Promise.all(this.options.columns.map(column => {
+        return column.onCreate ? Promise.resolve(column.onCreate(entity)).then((value) => { (entity as any)[column.property] = value }) : Promise.resolve()
+      }))
+    })).then(() => {
+      return entities.map(entity => {
+        const data = {} as any
+        for (const column of this.options.columns) {
+          // TODO nullable exception
+          data[column.name] = (entity as any)[column.property]
         }
-      }),
-    ])
+        return {
+          cursor: {
+            pk: resolveIndex(entity, this.options.pk, this.options.separator),
+            sk: resolveIndex(entity, this.options.sk, this.options.separator),
+          },
+          data,
+        }
+      })
+    }).then(nodes => {
+      return this.connection.putManyItems(nodes, {
+        aliasName: this.options.aliasName,
+      })
+    }).then(() => {
+      entity.forEach(entity => this.persistEntities.add(entity)) // persist
+      return Promise.resolve(entity)
+    })
+  }
+
+  remove(entities: TEntity[]): Promise<TEntity[]>
+  remove(entity: TEntity): Promise<TEntity>
+  async remove(entity: MaybeArray<TEntity>): Promise<MaybeArray<TEntity>> {
+    if (!Array.isArray(entity)) {
+      return this.remove([entity]).then(entities => entities[0])
+    }
+    const entities = entity
+    return this.connection.deleteManyItems(entities.map(entity => ({
+      pk: resolveIndex(entity, this.options.pk, this.options.separator),
+      sk: resolveIndex(entity, this.options.sk, this.options.separator),
+    })), { aliasName: this.options.aliasName }).then((results) => {
+      results.forEach((result, resultIndex) => {
+        if (result) {
+          this.persistEntities.delete(entities[resultIndex])
+        }
+      })
+      return Promise.resolve(entities)
+    })
+  }
+
+  findOne(conditions: Partial<TEntity> = {}): Promise<TEntity | null> {
+    const requiredColumns = [
+      ...this.options.pk.filter(index => index.type === 'column').map(({ value }) => value),
+      ...this.options.sk.filter(index => index.type === 'column').map(({ value }) => value),
+    ]
+    for (const requiredColumn of requiredColumns) {
+      if (!(requiredColumn in conditions)) {
+        throw new Error(`Column '${typeof requiredColumn === 'symbol' ? requiredColumn.toString() : requiredColumn}' is required.`)
+      }
+    }
+    return this.connection.getItem({
+      pk: resolveIndex(conditions, this.options.pk, this.options.separator),
+      sk: resolveIndex(conditions, this.options.sk, this.options.separator),
+    }, { aliasName: this.options.aliasName }).then((node) => {
+      if (!node) {
+        return node ?? null
+      }
+      const entity = {} as any
+      Object.setPrototypeOf(entity, this.options.target.prototype)
+      for (const column of this.options.columns) {
+        entity[column.property] = (node.data as any)[column.name] ?? null
+      }
+
+      this.persistEntities.add(entity)
+      return entity as TEntity
+    })
+  }
+
+  findMany(conditions: Partial<TEntity> = {}): Promise<QueryResult<TEntity>> {
+    const requiredColumns = [
+      ...this.options.pk.filter(index => index.type === 'column').map(({ value }) => value),
+    ]
+    for (const requiredColumn of requiredColumns) {
+      if (!(requiredColumn in conditions)) {
+        throw new Error(`Column '${typeof requiredColumn === 'symbol' ? requiredColumn.toString() : requiredColumn}' is required.`)
+      }
+    }
+    return this.connection.query(
+      resolveIndex(conditions, this.options.pk, this.options.separator),
+      { aliasName: this.options.aliasName },
+    ).then(({ nodes, lastEvaluatedKey }) => {
+      return {
+        nodes: nodes.map((node) => {
+          const entity = {} as any
+          Object.setPrototypeOf(entity, this.options.target.prototype)
+          for (const column of this.options.columns) {
+            entity[column.property] = (node.data as any)[column.name] ?? null
+          }
+          this.persistEntities.add(entity)
+          return entity as TEntity
+        }),
+        lastEvaluatedKey,
+      }
+    })
   }
 }

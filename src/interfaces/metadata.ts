@@ -1,4 +1,4 @@
-import { ColumnTypeConstructor } from './common'
+import { ColumnTypeConstructor, MaybePromise } from './common'
 import { TableIndex } from './repository'
 
 export interface MetadataEntity {
@@ -20,4 +20,6 @@ export interface MetadataColumn {
   name: string
   type: ColumnTypeConstructor
   nullable: boolean
+  onCreate?: (entity: any) => MaybePromise<any>
+  onUpdate?: (entity: any) => MaybePromise<any>
 }

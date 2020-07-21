@@ -32,9 +32,9 @@ export interface QueryParams {
   scanIndexForward?: boolean
 }
 
-export interface QueryResult<TResult> {
+export interface QueryResult<TNode> {
+  nodes: TNode[]
   lastEvaluatedKey?: DynamoCursor
-  nodes: DynamoNode<TResult>[]
 }
 
 export interface CountParams {

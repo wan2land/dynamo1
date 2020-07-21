@@ -1,13 +1,14 @@
-import { Column, Entity } from '../src'
+import { v4 as uuid } from 'uuid'
 
+import { Column, Entity, column, text } from '../src'
 
 @Entity<User>({
   name: 'users',
-  pk: [{ type: 'text', value: 'users' }],
-  sk: [{ type: 'column', value: 'id' }],
+  pk: text('users'),
+  sk: column('id'),
 })
 export class User {
-  @Column({ name: 'user_id' })
+  @Column({ name: 'user_id', onCreate: _ => uuid() })
   public id!: string
 
   @Column({ type: String })

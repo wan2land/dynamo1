@@ -1,28 +1,22 @@
-import { Column, columnBy, Entity, GeneratedValue, Id, Index } from '../src'
+import { Column, Entity, column, text } from '../src'
 
 
-@Entity({ 
-  tableName: '',
-  partitionKey: (user) => `users-${user.id}`
-})
-@Index({
-  'userId',
+@Entity<Article>({
+  name: 'articles',
+  pk: [text('articles'), column('userId')],
+  sk: column('id'),
 })
 export class Article {
 
-  @Id()
   @Column({ name: 'user_id' })
   public id!: string
 
   @Column({ name: 'user_id' })
-  public userId: string
-
-  @Column(String, { name: 'username' })
-  public username!: string
+  public userId!: string
 
   @Column()
   public email!: string
 
-  @Column({name: 'created_at'})
+  @Column({ name: 'created_at' })
   public createdAt!: number
 }

@@ -16,4 +16,3 @@ export interface TableTextIndex<TEntity> {
 export interface RepositoryOptions<TEntity> extends MetadataEntity {
   columns: MetadataColumn[]
 }
-
