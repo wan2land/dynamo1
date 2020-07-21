@@ -1,5 +1,5 @@
-import { createOptions } from './create-options'
 import { User } from '../../stubs/user'
+import { createOptions } from './create-options'
 
 
 describe('testsuite of repository/create-options', () => {
@@ -19,6 +19,7 @@ describe('testsuite of repository/create-options', () => {
           name: 'user_id',
           type: String,
           nullable: false,
+          onCreate: expect.any(Function),
         },
         {
           target: User,
@@ -40,6 +41,7 @@ describe('testsuite of repository/create-options', () => {
           name: 'createdAt',
           type: Number,
           nullable: false,
+          onCreate: expect.any(Function),
         },
         {
           target: User,
@@ -47,6 +49,8 @@ describe('testsuite of repository/create-options', () => {
           name: 'updatedAt',
           type: Number,
           nullable: false,
+          onCreate: expect.any(Function),
+          onUpdate: expect.any(Function),
         },
       ],
     })
