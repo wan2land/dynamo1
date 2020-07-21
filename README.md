@@ -11,8 +11,83 @@
   <a href="https://david-dm.org/wan2land/dynamo1?type=dev"><img alt="devDependencies Status" src="https://img.shields.io/david/dev/wan2land/dynamo1.svg?style=flat-square" /></a>
 </p>
 
+With Dynamo DB, only one table is enough.
+
 Dynamo DB one table ORM for Javascript(& Typescript).
 
-## License
 
-MIT
+## Installation
+
+## Usage
+
+```typescript
+
+const connection = createConnection([
+  {
+    tableName: `${STAGE}-datas`,
+    aliasName: 'datas',
+    pk: { name: string, type: Buffer },
+    sk: { name: string, type: String },
+    gsi: [
+      { name: 'gsi1', pk: { name: string, type: String }, sk: { name: string, type: String } },
+      { name: 'gsi2', pk: { name: string, type: String }, sk: { name: string, type: String } },
+      { name: 'gsi3', pk: { name: string, type: String }, sk: { name: string, type: String } },
+    ],
+  }, // tables[0] is default
+  // // need one more table?
+  // {
+  //   tableName: string
+  //   pk: string
+  //   pkType: String or Number or Buffer
+  //   sortKey: string
+  //   sortKeyType: String or Number or Buffer
+  // },
+])
+
+```
+
+### Entity
+
+
+```typescript
+import { v4 as uuid } from 'uuid'
+
+import { Column, Entity, column, text } from 'dynamo1'
+
+@Entity<User>({
+  name: 'users',
+  pk: text('users'),
+  sk: column('id'),
+})
+export class User {
+  @Column({ name: 'user_id', onCreate: _ => uuid() })
+  public id!: string
+
+  @Column({ type: String })
+  public username?: string
+
+  @Column({ nullable: true })
+  public email!: string
+
+  @Column<User>({
+    type: Number,
+    onCreate: entity => entity.createdAt || new Date().getTime(),
+  })
+  public createdAt!: number
+
+  @Column<User>({
+    type: Number,
+    onCreate: _ => new Date().getTime(),
+    onUpdate: _ => new Date().getTime(),
+  })
+  public updatedAt!: number
+}
+```
+
+## Todo
+
+- [ ] gsi
+
+## Reference
+
+- https://docs.aws.amazon.com/ko_kr/amazondynamodb/latest/developerguide/bp-sort-keys.html
