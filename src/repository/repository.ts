@@ -14,12 +14,6 @@ export class Repository<TEntity extends object> {
   ) {
   }
 
-  // TODO
-  // count
-  // createQueryBuilder(): QueryBuilder<TEntity>
-  // count(conditions?: FindConditions<Entity>): Promise<number>;
-  // scan(): Promise<TEntity[]>
-
   create(): TEntity
   create(entityLike: Partial<TEntity>): TEntity
   create(entityLike: Partial<TEntity> = {}): TEntity {
@@ -57,7 +51,6 @@ export class Repository<TEntity extends object> {
       return entities.map(entity => {
         const data = {} as any
         for (const column of this.options.columns) {
-          // TODO nullable exception
           data[column.name] = (entity as any)[column.property]
         }
         return {

@@ -205,7 +205,6 @@ export class Connection {
     return this.client.deleteItem({
       TableName: option.tableName,
       Key: dynamoCursorToKey(cursor, option),
-      // @TODO ReturnValues
     }).promise().then(({ Attributes }) => {
       return Attributes ? attrsToDynamoNode<TData>(Attributes, option) : null
     })

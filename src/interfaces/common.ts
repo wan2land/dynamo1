@@ -11,10 +11,6 @@ export type MaybeFactory<P> = P | Factory<P>
 export type Factory<P> = ((type: any) => P)
 
 
-export type ColumnType = boolean | number | string | Buffer
-
-export type ColumnTypeConstructor = BooleanConstructor | NumberConstructor | StringConstructor | typeof Buffer
-
 export type DynamoKey = string | number | Buffer
 
 export type DynamoKeyType = StringConstructor | NumberConstructor | typeof Buffer

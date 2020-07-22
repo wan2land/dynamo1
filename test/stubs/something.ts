@@ -33,6 +33,9 @@ export class Something {
   public typeFalse!: boolean
 
   @Column()
+  public typeBuffer!: Buffer
+
+  @Column()
   public typeArray!: any[]
 
   @Column()

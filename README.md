@@ -63,20 +63,18 @@ export class User {
   @Column({ name: 'user_id', onCreate: _ => uuid() })
   public id!: string
 
-  @Column({ type: String })
+  @Column()
   public username?: string
 
-  @Column({ nullable: true })
+  @Column()
   public email!: string
 
   @Column<User>({
-    type: Number,
     onCreate: entity => entity.createdAt || new Date().getTime(),
   })
   public createdAt!: number
 
   @Column<User>({
-    type: Number,
     onCreate: _ => new Date().getTime(),
     onUpdate: _ => new Date().getTime(),
   })
@@ -87,6 +85,12 @@ export class User {
 ## Todo
 
 - [ ] gsi
+- [ ] Connection.scan
+- [ ] Repository.scan
+- [ ] Repository.count
+- [ ] QueryBuilder, Repository.createQueryBuilder
+- [ ] ScanBuilder, Repository.createScanBuilder
+- [ ] custom error types
 
 ## Reference
 

@@ -142,7 +142,8 @@ describe('testsuite of repository/repository', () => {
       typeNumber: 10,
       typeTrue: true,
       typeFalse: false,
-      typeArray: [null, undefined, 'string', '', 10, true, false],
+      typeBuffer: Buffer.from('abcdefg'),
+      typeArray: [null, undefined, 'string', '', 10, true, false, Buffer.from('abcdefg')],
       typeEmptyArray: [],
       typeObject: {
         typeNull: null,
@@ -152,7 +153,8 @@ describe('testsuite of repository/repository', () => {
         typeNumber: 10,
         typeTrue: true,
         typeFalse: false,
-        typeArray: [null, undefined, 'string', '', 10, true, false],
+        typeBuffer: Buffer.from('abcdefg'),
+        typeArray: [null, undefined, 'string', '', 10, true, false, Buffer.from('abcdefg')],
         typeObject: {},
       },
     }))
@@ -162,21 +164,23 @@ describe('testsuite of repository/repository', () => {
       typeNull: null,
       typeUndefined: null, // undefined -> null
       typeString: 'string',
-      typeEmptyString: null, // empty string -> null
+      typeEmptyString: '',
       typeNumber: 10,
       typeTrue: true,
       typeFalse: false,
-      typeArray: [null, null, 'string', null, 10, true, false],
+      typeBuffer: Buffer.from('abcdefg'),
+      typeArray: [null, null, 'string', '', 10, true, false, Buffer.from('abcdefg')],
       typeEmptyArray: [],
       typeObject: {
         typeNull: null,
         typeUndefined: null,
         typeString: 'string',
-        typeEmptyString: null,
+        typeEmptyString: '',
         typeNumber: 10,
         typeTrue: true,
         typeFalse: false,
-        typeArray: [null, null, 'string', null, 10, true, false],
+        typeBuffer: Buffer.from('abcdefg'),
+        typeArray: [null, null, 'string', '', 10, true, false, Buffer.from('abcdefg')],
         typeObject: {},
       },
     })

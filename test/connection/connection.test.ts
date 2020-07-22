@@ -26,9 +26,21 @@ async function createSafeConnection(tableName: string): Promise<Connection> {
       { AttributeName: 'pk', KeyType: 'HASH' },
       { AttributeName: 'sk', KeyType: 'RANGE' },
     ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'gsi0',
+        KeySchema: [
+          { AttributeName: 'gsi0_pk', KeyType: 'HASH' },
+        ],
+        Projection: {
+          ProjectionType: 'KEYS_ONLY',
+        },
+      },
+    ],
     AttributeDefinitions: [
       { AttributeName: 'pk', AttributeType: 'S' },
       { AttributeName: 'sk', AttributeType: 'S' },
+      { AttributeName: 'gsi0_pk', AttributeType: 'S' },
     ],
     BillingMode: 'PAY_PER_REQUEST',
   }).promise()

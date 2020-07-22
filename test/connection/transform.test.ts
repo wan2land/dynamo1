@@ -63,11 +63,10 @@ describe('testsuite of connection/transform.toDynamo', () => {
   it('test toDynamo null', () => {
     expect(toDynamo(void 0)).toEqual({ NULL: true })
     expect(toDynamo(null)).toEqual({ NULL: true })
-    expect(toDynamo('')).toEqual({ NULL: true })
   })
 
   it('test toDynamo string', () => {
-    expect(toDynamo('')).toEqual({ NULL: true })
+    expect(toDynamo('')).toEqual({ S: '' })
     expect(toDynamo('string!')).toEqual({ S: 'string!' })
   })
 

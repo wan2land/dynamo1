@@ -10,7 +10,7 @@ export function toDynamoMap(item: Record<string, any>): DynamoDB.AttributeMap {
 }
 
 export function toDynamo(item: any): DynamoDB.AttributeValue {
-  if (item === null || typeof item === 'undefined' || item === '') {
+  if (item === null || typeof item === 'undefined') {
     return { NULL: true }
   }
   if (item instanceof Buffer) {
@@ -44,13 +44,13 @@ export function fromDynamo(item: DynamoDB.AttributeValue): any {
   if (item.B) {
     return item.B
   }
-  if (item.S) {
+  if ('S' in item) {
     return item.S
   }
   if (item.N) {
     return +item.N
   }
-  if (typeof item.BOOL !== 'undefined') {
+  if ('BOOL' in item) {
     return item.BOOL
   }
   if (item.L) {
@@ -59,7 +59,7 @@ export function fromDynamo(item: DynamoDB.AttributeValue): any {
   if (item.M) {
     return fromDynamoMap(item.M)
   }
-  throw new TypeError('Unknown Dynamo attribute value.')
+  throw new TypeError(`Unknown Dynamo attribute value. (item=${JSON.stringify(item)})`)
 }
 
 export function dynamoCursorToKey(cursor: DynamoCursor, option: ConnectionTableOption): DynamoDB.Key {
