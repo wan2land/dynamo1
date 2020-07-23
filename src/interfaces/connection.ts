@@ -1,36 +1,50 @@
 import { Repository } from '../repository/repository'
-import { DynamoKey, DynamoKeyType, ConstructType } from './common'
+import { ConstructType } from './common'
+
+export type DynamoKey = string | number | Buffer
+export type DynamoKeyTypeOf = StringConstructor | NumberConstructor | typeof Buffer
+
+export type DynamoData = DynamoScalarData | DynamoComplexData
+export type DynamoScalarData = string | number | boolean | null | Buffer
+export type DynamoComplexData = DynamoScalarData[] | Record<string, DynamoScalarData>
+
 
 export type RepositoryPair<TEntity extends object> = [ConstructType<TEntity>, ConstructType<Repository<TEntity>>]
 
-export interface ConnectionOptions {
-  tables: ConnectionTableOption[]
-  repositories?: RepositoryPair<any>[]
-}
-
-export interface IndexType {
+export interface DynamoKeyOption {
   name: string
-  type?: DynamoKeyType
+  type?: DynamoKeyTypeOf
 }
 
-export interface ConnectionTableIndex {
+export interface DynamoIndex {
+  pk: DynamoKeyOption
+  sk?: DynamoKeyOption
+}
+
+export interface DynamoCursor {
+  pk: DynamoKey
+  sk?: DynamoKey
+}
+
+export interface Gsi extends DynamoIndex {
   name: string
-  pk: IndexType
-  sk?: IndexType
 }
 
-export interface ConnectionTableOption {
+export interface TableOption extends DynamoIndex {
   tableName: string
   aliasName?: string
-  pk: IndexType
-  sk?: IndexType
-  gsi?: ConnectionTableIndex[]
+  gsi?: Gsi[]
+}
+
+export interface ConnectionOptions {
+  tables: TableOption[]
+  repositories?: RepositoryPair<any>[]
 }
 
 export interface QueryParams {
   aliasName?: string
   limit?: number
-  indexName?: string
+  gsiName?: string
   exclusiveStartKey?: DynamoCursor
   scanIndexForward?: boolean
 }
@@ -42,6 +56,7 @@ export interface QueryResult<TNode> {
 
 export interface CountParams {
   aliasName?: string
+  gsiName?: string
 }
 
 export interface GetItemParams {
@@ -59,9 +74,4 @@ export interface DeleteItemParams {
 export interface DynamoNode<P> {
   cursor: DynamoCursor
   data: P
-}
-
-export interface DynamoCursor {
-  pk: DynamoKey
-  sk?: DynamoKey
 }

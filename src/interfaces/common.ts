@@ -7,10 +7,4 @@ export type MaybePromise<T> = T | Promise<T>
 
 export type MaybeFactory<P> = P | Factory<P>
 
-
 export type Factory<P> = ((type: any) => P)
-
-
-export type DynamoKey = string | number | Buffer
-
-export type DynamoKeyType = StringConstructor | NumberConstructor | typeof Buffer

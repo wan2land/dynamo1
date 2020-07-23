@@ -1,6 +1,6 @@
 import { DynamoDB } from 'aws-sdk'
 
-import { DynamoNode, ConnectionTableOption, DynamoCursor } from '../interfaces/connection'
+import { DynamoNode, TableOption, DynamoCursor, DynamoIndex } from '../interfaces/connection'
 
 
 export function toDynamoMap(item: Record<string, any>): DynamoDB.AttributeMap {
@@ -62,14 +62,14 @@ export function fromDynamo(item: DynamoDB.AttributeValue): any {
   throw new TypeError(`Unknown Dynamo attribute value. (item=${JSON.stringify(item)})`)
 }
 
-export function dynamoCursorToKey(cursor: DynamoCursor, option: ConnectionTableOption): DynamoDB.Key {
+export function dynamoCursorToKey(cursor: DynamoCursor, index: DynamoIndex): DynamoDB.Key {
   return toDynamoMap({
-    [option.pk.name]: cursor.pk,
-    ...option.sk ? { [option.sk.name]: cursor.sk } : {},
+    [index.pk.name]: cursor.pk,
+    ...index.sk ? { [index.sk.name]: cursor.sk } : {},
   })
 }
 
-export function dynamoNodeToAttrs<TData>({ cursor, data }: DynamoNode<TData>, option: ConnectionTableOption): DynamoDB.AttributeMap {
+export function dynamoNodeToAttrs<TData>({ cursor, data }: DynamoNode<TData>, option: TableOption): DynamoDB.AttributeMap {
   return toDynamoMap({
     [option.pk.name]: cursor.pk,
     ...option.sk ? { [option.sk.name]: cursor.sk } : {},
@@ -77,7 +77,7 @@ export function dynamoNodeToAttrs<TData>({ cursor, data }: DynamoNode<TData>, op
   })
 }
 
-export function attrsToDynamoNode<TData>(data: DynamoDB.AttributeMap, option: ConnectionTableOption): DynamoNode<TData> {
+export function attrsToDynamoNode<TData>(data: DynamoDB.AttributeMap, option: TableOption): DynamoNode<TData> {
   const parsed = fromDynamoMap(data)
 
   const cursor: DynamoCursor = { pk: parsed[option.pk.name] }

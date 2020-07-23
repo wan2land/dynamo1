@@ -11,6 +11,12 @@ async function createSafeConnection(tableName: string): Promise<Connection> {
       tableName,
       pk: { name: 'pk' },
       sk: { name: 'sk' },
+      gsi: [
+        {
+          name: 'gsi0',
+          pk: { name: 'gsi0_pk' },
+        },
+      ],
     }],
     repositories: [
       [Article, ArticleRepository],

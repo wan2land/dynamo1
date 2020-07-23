@@ -1,8 +1,9 @@
 import { DynamoDB } from 'aws-sdk'
 import { WriteRequest } from 'aws-sdk/clients/dynamodb'
 
-import { DynamoKey, ConstructType } from '../interfaces/common'
+import { ConstructType } from '../interfaces/common'
 import {
+  DynamoKey,
   CountParams,
   DeleteItemParams,
   DynamoCursor,
@@ -10,18 +11,19 @@ import {
   GetItemParams,
   PutItemParams,
   ConnectionOptions,
-  ConnectionTableOption,
+  TableOption,
   QueryParams,
   QueryResult,
+  DynamoIndex,
 } from '../interfaces/connection'
 import { createOptions } from '../repository/create-options'
 import { Repository } from '../repository/repository'
-import { assertIndexableColumnType } from '../utils/type'
+import { assertDynamoIndex } from './assert'
 import { fromDynamoMap, toDynamo, attrsToDynamoNode, dynamoNodeToAttrs, dynamoCursorToKey } from './transformer'
 
 export class Connection {
 
-  tableOptions = new Map<string, ConnectionTableOption>()
+  tableOptions = new Map<string, TableOption>()
   definedRepos = new Map<ConstructType<any>, ConstructType<Repository<any>>>()
   cachedRepos = new Map<Function, Repository<any>>()
 
@@ -42,23 +44,6 @@ export class Connection {
     }
   }
 
-  // TODO scan
-
-  count(pk: DynamoKey, options: CountParams = {}): Promise<number> {
-    const option = this._findOptionByAliasName(options.aliasName)
-    return this.client.query({
-      TableName: option.tableName,
-      Select: 'COUNT',
-      KeyConditionExpression: '#pk = :pk',
-      ExpressionAttributeNames: {
-        '#pk': option.pk.name,
-      },
-      ExpressionAttributeValues: {
-        ':pk': toDynamo(pk),
-      },
-    }).promise().then(({ Count }) => Count ?? 0)
-  }
-
   getRepository<TEntity extends object, R extends Repository<TEntity>>(entityCtor: ConstructType<TEntity>): R {
     let repository = this.cachedRepos.get(entityCtor)
     if (!repository) {
@@ -69,22 +54,38 @@ export class Connection {
     return repository as R
   }
 
-  public query<TData extends Record<string, any>>(pk: DynamoKey, params: QueryParams = {}): Promise<QueryResult<DynamoNode<TData>>> {
-    const option = this._findOptionByAliasName(params.aliasName)
-
+  count(pkValue: DynamoKey, params: CountParams = {}): Promise<number> {
+    const [option, index] = this._findOptionAndIndex(params)
     return this.client.query({
       TableName: option.tableName,
-      Limit: params.limit,
+      Select: 'COUNT',
+      IndexName: params.gsiName,
       KeyConditionExpression: '#pk = :pk',
-      IndexName: params.indexName,
       ExpressionAttributeNames: {
-        '#pk': option.pk.name,
+        '#pk': index.pk.name,
       },
       ExpressionAttributeValues: {
-        ':pk': toDynamo(pk),
+        ':pk': toDynamo(pkValue),
       },
-      ExclusiveStartKey: params.exclusiveStartKey ? dynamoCursorToKey(params.exclusiveStartKey, option) : undefined,
+    }).promise().then(({ Count }) => Count ?? 0)
+  }
+
+  public query<TData extends Record<string, any>>(pkValue: DynamoKey, params: QueryParams = {}): Promise<QueryResult<DynamoNode<TData>>> {
+    const [option, index] = this._findOptionAndIndex(params)
+    return this.client.query({
+      TableName: option.tableName,
+      IndexName: params.gsiName,
+      KeyConditionExpression: '#pk = :pk',
+      // FilterExpression: '',
+      ExpressionAttributeNames: {
+        '#pk': index.pk.name,
+      },
+      ExpressionAttributeValues: {
+        ':pk': toDynamo(pkValue),
+      },
+      ExclusiveStartKey: params.exclusiveStartKey ? dynamoCursorToKey(params.exclusiveStartKey, index) : undefined,
       ScanIndexForward: params.scanIndexForward,
+      Limit: params.limit,
     }).promise().then(({ Items, LastEvaluatedKey }) => {
       const nodes = (Items ?? []).map(item => attrsToDynamoNode<TData>(item, option))
       if (LastEvaluatedKey) {
@@ -104,12 +105,8 @@ export class Connection {
   }
 
   getItem<TData extends Record<string, any>>(cursor: DynamoCursor, params: GetItemParams = {}): Promise<DynamoNode<TData> | null> {
-    const option = this._findOptionByAliasName(params.aliasName)
-
-    assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
-    if (option.sk) {
-      assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
-    }
+    const option = this._findOption(params)
+    assertDynamoIndex(option, cursor)
 
     return this.client.getItem({
       TableName: option.tableName,
@@ -124,12 +121,9 @@ export class Connection {
       return Promise.resolve([])
     }
 
-    const option = this._findOptionByAliasName(params.aliasName)
+    const option = this._findOption(params)
     for (const cursor of cursors) {
-      assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
-      if (option.sk) {
-        assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
-      }
+      assertDynamoIndex(option, cursor)
     }
 
     return this.client.batchGetItem({
@@ -144,12 +138,8 @@ export class Connection {
   }
 
   putItem<TData extends Record<string, any>>(node: DynamoNode<TData>, params: PutItemParams = {}): Promise<DynamoNode<TData> | null> {
-    const option = this._findOptionByAliasName(params.aliasName)
-
-    assertIndexableColumnType(option.pk.type ?? String, node.cursor.pk)
-    if (option.sk) {
-      assertIndexableColumnType(option.sk.type ?? String, node.cursor.sk)
-    }
+    const option = this._findOption(params)
+    assertDynamoIndex(option, node.cursor)
 
     return this.client.putItem({
       TableName: option.tableName,
@@ -164,12 +154,9 @@ export class Connection {
       return Promise.resolve([])
     }
 
-    const option = this._findOptionByAliasName(params.aliasName)
+    const option = this._findOption(params)
     for (const node of nodes) {
-      assertIndexableColumnType(option.pk.type ?? String, node.cursor.pk)
-      if (option.sk) {
-        assertIndexableColumnType(option.sk.type ?? String, node.cursor.sk)
-      }
+      assertDynamoIndex(option, node.cursor)
     }
 
     return this.client.batchWriteItem({
@@ -195,12 +182,8 @@ export class Connection {
   }
 
   public deleteItem<TData extends Record<string, any>>(cursor: DynamoCursor, params: DeleteItemParams = {}): Promise<DynamoNode<TData> | null> {
-    const option = this._findOptionByAliasName(params.aliasName)
-
-    assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
-    if (option.sk) {
-      assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
-    }
+    const option = this._findOption(params)
+    assertDynamoIndex(option, cursor)
 
     return this.client.deleteItem({
       TableName: option.tableName,
@@ -215,12 +198,9 @@ export class Connection {
       return Promise.resolve([])
     }
 
-    const option = this._findOptionByAliasName(params.aliasName)
+    const option = this._findOption(params)
     for (const cursor of cursors) {
-      assertIndexableColumnType(option.pk.type ?? String, cursor.pk)
-      if (option.sk) {
-        assertIndexableColumnType(option.sk.type ?? String, cursor.sk)
-      }
+      assertDynamoIndex(option, cursor)
     }
 
     return this.client.batchWriteItem({
@@ -246,7 +226,19 @@ export class Connection {
     })
   }
 
-  _findOptionByAliasName(aliasName?: string): ConnectionTableOption {
-    return this.tableOptions.get(aliasName ?? 'default') ?? this.tableOptions.entries().next().value
+  _findOption(params: { aliasName?: string }): TableOption {
+    return this.tableOptions.get(params.aliasName ?? 'default') ?? [...this.tableOptions.entries()][0][1]
+  }
+
+  _findOptionAndIndex(params: { aliasName?: string, gsiName?: string }): [TableOption, DynamoIndex] {
+    const option = this._findOption(params)
+    if (!params.gsiName) {
+      return [option, option]
+    }
+    const gsi = (option.gsi ?? []).find(({ name }) => name === params.gsiName)
+    if (gsi) {
+      return [option, gsi]
+    }
+    throw new Error(`Unknown GSI name(${params.gsiName}).`)
   }
 }
