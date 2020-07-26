@@ -24,6 +24,7 @@ export class Compiler {
         if (!gsi) {
           throw new Error(`Unknown index name(${indexName}).`)
         }
+        result.IndexName = gsi.name
         index = gsi
       }
 
@@ -38,6 +39,18 @@ export class Compiler {
       }
 
       result.KeyConditionExpression = keyConditionExprParts.join(' and ')
+    }
+
+    if (builder.limitState) {
+      result.Limit = builder.limitState
+    }
+
+    if (typeof builder.scanIndexForwardState === 'boolean') {
+      result.ScanIndexForward = builder.scanIndexForwardState
+    }
+
+    if (builder.exclusiveStartKeyState) {
+      result.ExclusiveStartKey = toDynamoMap(builder.exclusiveStartKeyState)
     }
 
     return result

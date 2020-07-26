@@ -1,5 +1,5 @@
-import { DynamoKey } from '../interfaces/connection'
-import { KeyCondition, KeyConditionState, OperatorResolver, KeyOperator } from '../interfaces/query-builder'
+import { DynamoKey, DynamoCursor } from '../interfaces/connection'
+import { KeyCondition, KeyConditionState, OperatorResolver, KeyOperator, FilterCondition } from '../interfaces/query-builder'
 import { SingleOperatorResolver } from './operators/single-operator-resolver'
 
 function normalizeKeyCondition(key: DynamoKey | [KeyOperator, DynamoKey] | OperatorResolver): OperatorResolver {
@@ -15,6 +15,10 @@ function normalizeKeyCondition(key: DynamoKey | [KeyOperator, DynamoKey] | Opera
 export class QueryBuilder {
 
   keyState?: KeyConditionState
+  filterState?: OperatorResolver[]
+  limitState?: number
+  scanIndexForwardState?: boolean
+  exclusiveStartKeyState?: DynamoCursor
 
   key(key: KeyCondition, indexName?: string): this {
     this.keyState = {
@@ -25,138 +29,18 @@ export class QueryBuilder {
     return this
   }
 
-  // public where(name: string, operator: WhereOperator, value: WhereValue): this
-  // public where(name: string, operatorOrValue: any, valueOrNull?: WhereValue) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     name,
-  //     operator: !isNull(valueOrNull) ? operatorOrValue : '=',
-  //     value: [!isNull(valueOrNull) ? valueOrNull : operatorOrValue],
-  //   })
-  //   return this
-  // }
+  limit(limit: number | null): this {
+    this.limitState = limit ?? undefined
+    return this
+  }
 
-  // public orWhere(name: string, value: WhereValue): this
-  // public orWhere(name: string, operator: WhereOperator, value: WhereValue): this
-  // public orWhere(name: string, operatorOrValue: any, valueOrNull?: WhereValue) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     or: true,
-  //     name,
-  //     operator: !isNull(valueOrNull) ? operatorOrValue : '=',
-  //     value: [!isNull(valueOrNull) ? valueOrNull : operatorOrValue],
-  //   })
-  //   return this
-  // }
+  scanIndexForward(forward: boolean | null): this {
+    this.scanIndexForwardState = forward ?? undefined
+    return this
+  }
 
-  // public whereNot(name: string, value: WhereValue): this
-  // public whereNot(name: string, operator: WhereOperator, value: WhereValue): this
-  // public whereNot(name: string, operatorOrValue: any, valueOrNull?: WhereValue) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     not: true,
-  //     name,
-  //     operator: !isNull(valueOrNull) ? operatorOrValue : '=',
-  //     value: [!isNull(valueOrNull) ? valueOrNull : operatorOrValue],
-  //   })
-  //   return this
-  // }
-
-  // public orWhereNot(name: string, value: WhereValue): this
-  // public orWhereNot(name: string, operator: WhereOperator, value: WhereValue): this
-  // public orWhereNot(name: string, operatorOrValue: any, valueOrNull?: WhereValue) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     or: true,
-  //     not: true,
-  //     name,
-  //     operator: !isNull(valueOrNull) ? operatorOrValue : '=',
-  //     value: [!isNull(valueOrNull) ? valueOrNull : operatorOrValue],
-  //   })
-  //   return this
-  // }
-
-  // public whereIn(name: string, values: WhereValue[]) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     name,
-  //     operator: 'in',
-  //     value: values,
-  //   })
-  //   return this
-  // }
-
-  // public orWhereIn(name: string, values: WhereValue[]) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     or: true,
-  //     name,
-  //     operator: 'in',
-  //     value: values,
-  //   })
-  //   return this
-  // }
-
-  // public whereNotIn(name: string, values: WhereValue[]) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     not: true,
-  //     name,
-  //     operator: 'in',
-  //     value: values,
-  //   })
-  //   return this
-  // }
-
-  // public orWhereNotIn(name: string, values: WhereValue[]) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     or: true,
-  //     not: true,
-  //     name,
-  //     operator: 'in',
-  //     value: values,
-  //   })
-  //   return this
-  // }
-
-  // public whereNull(name: string) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     name,
-  //     operator: 'is null',
-  //   })
-  //   return this
-  // }
-
-  // public orWhereNull(name: string) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     or: true,
-  //     name,
-  //     operator: 'is null',
-  //   })
-  //   return this
-  // }
-
-  // public whereNotNull(name: string) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     not: true,
-  //     name,
-  //     operator: 'is null',
-  //   })
-  //   return this
-  // }
-
-  // public orWhereNotNull(name: string) {
-  //   this.whereStates = this.whereStates || []
-  //   this.whereStates.push({
-  //     or: true,
-  //     not: true,
-  //     name,
-  //     operator: 'is null',
-  //   })
-  //   return this
-  // }
+  exclusiveStartKey(key: DynamoCursor | null): this {
+    this.exclusiveStartKeyState = key ?? undefined
+    return this
+  }
 }

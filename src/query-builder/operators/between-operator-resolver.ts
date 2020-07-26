@@ -16,9 +16,9 @@ export class BetweenOperatorResolver implements OperatorResolver {
 
   resolveExpression(key: string, attrName: string): string {
     if (RESERVED_WORDS.includes(key.toUpperCase())) {
-      return `#${attrName} BETWEEN :${attrName}_from AND :${attrName}_to`
+      return `#${attrName} between :${attrName}_from and :${attrName}_to`
     }
-    return `${key} BETWEEN :${attrName}_from AND :${attrName}_to`
+    return `${key} between :${attrName}_from and :${attrName}_to`
   }
 
   resolveAttrNames(key: string, attrName: string): Record<string, string> {
