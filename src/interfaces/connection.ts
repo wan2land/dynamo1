@@ -41,6 +41,15 @@ export interface ConnectionOptions {
   repositories?: RepositoryPair<any>[]
 }
 
+export interface CountParams {
+  aliasName?: string
+  keyCondition?: string
+  filter?: string
+  names?: Record<string, any>
+  values?: Record<string, DynamoData>
+  indexName?: string
+}
+
 export interface QueryParams {
   aliasName?: string
   keyCondition?: string
@@ -56,11 +65,6 @@ export interface QueryParams {
 export interface QueryResult<TNode> {
   nodes: TNode[]
   lastEvaluatedKey?: DynamoCursor
-}
-
-export interface CountParams {
-  aliasName?: string
-  gsiName?: string
 }
 
 export interface GetItemParams {

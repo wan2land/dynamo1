@@ -300,7 +300,12 @@ describe('testsuite of connection/connection', () => {
   it('test count', async () => {
     const connection = await connectionPromise
 
-    await expect(connection.count('count-users')).resolves.toEqual(0)
+    await expect(connection.count({
+      keyCondition: 'pk = :pk',
+      values: {
+        ':pk': 'count-users',
+      },
+    })).resolves.toEqual(0)
 
     for (let i = 0; i < 10; i++) {
       await connection.putItem({
@@ -311,7 +316,12 @@ describe('testsuite of connection/connection', () => {
       })
     }
 
-    await expect(connection.count('count-users')).resolves.toEqual(10)
+    await expect(connection.count({
+      keyCondition: 'pk = :pk',
+      values: {
+        ':pk': 'count-users',
+      },
+    })).resolves.toEqual(10)
   })
 
   it('test query', async () => {

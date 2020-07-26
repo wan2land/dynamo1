@@ -61,19 +61,16 @@ export class Connection {
     return repository as R
   }
 
-  count(pkValue: DynamoKey, params: CountParams = {}): Promise<number> {
-    const [option, index] = this._findOptionAndIndex(params)
+  count(params: CountParams = {}): Promise<number> {
+    const option = this._findOption(params)
     return this.client.query({
       TableName: option.tableName,
       Select: 'COUNT',
-      IndexName: params.gsiName,
-      KeyConditionExpression: '#pk = :pk',
-      ExpressionAttributeNames: {
-        '#pk': index.pk.name,
-      },
-      ExpressionAttributeValues: {
-        ':pk': toDynamo(pkValue),
-      },
+      IndexName: params.indexName,
+      KeyConditionExpression: params.keyCondition,
+      FilterExpression: params.filter,
+      ExpressionAttributeNames: isNotEmptyObject(params.names) ? params.names : undefined,
+      ExpressionAttributeValues: isNotEmptyObject(params.values) ? toDynamoMap(params.values) : undefined,
     }).promise().then(({ Count }) => Count ?? 0)
   }
 
@@ -233,15 +230,15 @@ export class Connection {
     return this.tableOptions.get(params.aliasName ?? 'default') ?? [...this.tableOptions.entries()][0][1]
   }
 
-  _findOptionAndIndex(params: { aliasName?: string, gsiName?: string }): [TableOption, DynamoIndex] {
+  _findOptionAndIndex(params: { aliasName?: string, indexName?: string }): [TableOption, DynamoIndex] {
     const option = this._findOption(params)
-    if (!params.gsiName) {
+    if (!params.indexName) {
       return [option, option]
     }
-    const gsi = (option.gsi ?? []).find(({ name }) => name === params.gsiName)
+    const gsi = (option.gsi ?? []).find(({ name }) => name === params.indexName)
     if (gsi) {
       return [option, gsi]
     }
-    throw new Error(`Unknown GSI name(${params.gsiName}).`)
+    throw new Error(`Unknown GSI name(${params.indexName}).`)
   }
 }
