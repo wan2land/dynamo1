@@ -88,7 +88,7 @@ export class User {
 - [ ] Connection.scan
 - [ ] Repository.scan
 - [ ] Repository.count
-- [ ] QueryBuilder, Repository.createQueryBuilder
+- [v] QueryBuilder, Repository.createQueryBuilder
 - [ ] ScanBuilder, Repository.createScanBuilder
 - [ ] custom error types
 
