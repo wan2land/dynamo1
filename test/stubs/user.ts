@@ -23,7 +23,7 @@ export class User {
   public createdAt!: number
 
   @Column<User>({
-    onCreate: _ => new Date().getTime(),
+    onCreate: entity => entity.createdAt || new Date().getTime(),
     onUpdate: _ => new Date().getTime(),
   })
   public updatedAt!: number

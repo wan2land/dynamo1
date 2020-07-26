@@ -2,16 +2,27 @@ import { Connection } from '../connection/connection'
 import { resolveIndex } from '../indexer/resolve-index'
 import { MaybeArray } from '../interfaces/common'
 import { QueryResult } from '../interfaces/connection'
+import { QueryBuilder } from '../interfaces/query-builder'
 import { RepositoryOptions } from '../interfaces/repository'
+import { Compiler } from '../query-builder/compiler'
+import { DefaultQueryBuilder } from '../query-builder/default-query-builder'
+import { EntityQueryExecutor } from '../query-executor/entity-query-executor'
 
 export class Repository<TEntity extends object> {
 
   persistEntities = new WeakSet<TEntity>()
+  executor: EntityQueryExecutor<TEntity>
 
   constructor(
     public connection: Connection,
+    public compiler: Compiler,
     public options: RepositoryOptions<TEntity>,
   ) {
+    this.executor = new EntityQueryExecutor(compiler, this.connection, this.persistEntities, this.options)
+  }
+
+  createQueryBuilder(): QueryBuilder<TEntity> {
+    return new DefaultQueryBuilder<TEntity>(this.executor)
   }
 
   create(): TEntity
@@ -101,22 +112,10 @@ export class Repository<TEntity extends object> {
         throw new Error(`Column '${typeof requiredColumn === 'symbol' ? requiredColumn.toString() : requiredColumn}' is required.`)
       }
     }
-    return this.connection.getItem({
+    return this.createQueryBuilder().key({
       pk: resolveIndex(conditions, this.options.pk, this.options.separator),
       sk: resolveIndex(conditions, this.options.sk, this.options.separator),
-    }, { aliasName: this.options.aliasName }).then((node) => {
-      if (!node) {
-        return node ?? null
-      }
-      const entity = {} as any
-      Object.setPrototypeOf(entity, this.options.target.prototype)
-      for (const column of this.options.columns) {
-        entity[column.property] = (node.data as any)[column.name] ?? null
-      }
-
-      this.persistEntities.add(entity)
-      return entity as TEntity
-    })
+    }).limit(1).getOne()
   }
 
   findMany(conditions: Partial<TEntity> = {}): Promise<QueryResult<TEntity>> {
@@ -128,22 +127,9 @@ export class Repository<TEntity extends object> {
         throw new Error(`Column '${typeof requiredColumn === 'symbol' ? requiredColumn.toString() : requiredColumn}' is required.`)
       }
     }
-    return this.connection.query(
-      resolveIndex(conditions, this.options.pk, this.options.separator),
-      { aliasName: this.options.aliasName },
-    ).then(({ nodes, lastEvaluatedKey }) => {
-      return {
-        nodes: nodes.map((node) => {
-          const entity = {} as any
-          Object.setPrototypeOf(entity, this.options.target.prototype)
-          for (const column of this.options.columns) {
-            entity[column.property] = (node.data as any)[column.name] ?? null
-          }
-          this.persistEntities.add(entity)
-          return entity as TEntity
-        }),
-        lastEvaluatedKey,
-      }
-    })
+    return this.createQueryBuilder().key({
+      pk: resolveIndex(conditions, this.options.pk, this.options.separator),
+      sk: resolveIndex(conditions, this.options.sk, this.options.separator),
+    }).getMany()
   }
 }

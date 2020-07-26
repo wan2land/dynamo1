@@ -16,14 +16,17 @@ import {
   QueryResult,
   DynamoIndex,
 } from '../interfaces/connection'
+import { Compiler } from '../query-builder/compiler'
 import { createOptions } from '../repository/create-options'
 import { Repository } from '../repository/repository'
+import { isNotEmptyObject } from '../utils/object'
 import { assertDynamoIndex } from './assert'
-import { fromDynamoMap, toDynamo, attrsToDynamoNode, dynamoNodeToAttrs, dynamoCursorToKey } from './transformer'
+import { fromDynamoMap, toDynamo, attrsToDynamoNode, dynamoNodeToAttrs, dynamoCursorToKey, toDynamoMap } from './transformer'
 
 export class Connection {
 
   tableOptions = new Map<string, TableOption>()
+  compilers = new Map<TableOption, Compiler>()
   definedRepos = new Map<ConstructType<any>, ConstructType<Repository<any>>>()
   cachedRepos = new Map<Function, Repository<any>>()
 
@@ -36,8 +39,10 @@ export class Connection {
     for (const tableOption of options.tables) {
       if (tableOption.aliasName) {
         this.tableOptions.set(tableOption.aliasName, tableOption)
+        this.compilers.set(tableOption, new Compiler(tableOption))
       }
       this.tableOptions.set(tableOption.tableName, tableOption)
+      this.compilers.set(tableOption, new Compiler(tableOption))
     }
     for (const [entity, repo] of options.repositories ?? []) {
       this.definedRepos.set(entity, repo)
@@ -48,7 +53,9 @@ export class Connection {
     let repository = this.cachedRepos.get(entityCtor)
     if (!repository) {
       const RepoCtor = this.definedRepos.get(entityCtor) ?? Repository
-      repository = new RepoCtor(this, createOptions(entityCtor))
+      const repoOptions = createOptions(entityCtor)
+      const tableOption = this._findOption(repoOptions)
+      repository = new RepoCtor(this, this.compilers.get(tableOption), repoOptions)
       this.cachedRepos.set(entityCtor, repository)
     }
     return repository as R
@@ -70,20 +77,16 @@ export class Connection {
     }).promise().then(({ Count }) => Count ?? 0)
   }
 
-  public query<TData extends Record<string, any>>(pkValue: DynamoKey, params: QueryParams = {}): Promise<QueryResult<DynamoNode<TData>>> {
-    const [option, index] = this._findOptionAndIndex(params)
+  query<TData extends Record<string, any>>(params: QueryParams = {}): Promise<QueryResult<DynamoNode<TData>>> {
+    const option = this._findOption(params)
     return this.client.query({
       TableName: option.tableName,
-      IndexName: params.gsiName,
-      KeyConditionExpression: '#pk = :pk',
-      // FilterExpression: '',
-      ExpressionAttributeNames: {
-        '#pk': index.pk.name,
-      },
-      ExpressionAttributeValues: {
-        ':pk': toDynamo(pkValue),
-      },
-      ExclusiveStartKey: params.exclusiveStartKey ? dynamoCursorToKey(params.exclusiveStartKey, index) : undefined,
+      IndexName: params.indexName,
+      KeyConditionExpression: params.keyCondition,
+      FilterExpression: params.filter,
+      ExpressionAttributeNames: isNotEmptyObject(params.names) ? params.names : undefined,
+      ExpressionAttributeValues: isNotEmptyObject(params.values) ? toDynamoMap(params.values) : undefined,
+      ExclusiveStartKey: isNotEmptyObject(params.exclusiveStartKey) ? toDynamoMap(params.exclusiveStartKey) : undefined,
       ScanIndexForward: params.scanIndexForward,
       Limit: params.limit,
     }).promise().then(({ Items, LastEvaluatedKey }) => {

@@ -317,7 +317,12 @@ describe('testsuite of connection/connection', () => {
   it('test query', async () => {
     const connection = await connectionPromise
 
-    await expect(connection.query('query-users')).resolves.toEqual({
+    await expect(connection.query({
+      keyCondition: 'pk = :pk',
+      values: {
+        ':pk': 'query-users',
+      },
+    })).resolves.toEqual({
       nodes: [],
     })
 
@@ -330,7 +335,13 @@ describe('testsuite of connection/connection', () => {
       })
     }
 
-    const result1 = await connection.query('query-users', { limit: 5 })
+    const result1 = await connection.query({
+      keyCondition: 'pk = :pk',
+      values: {
+        ':pk': 'query-users',
+      },
+      limit: 5,
+    })
     expect(result1).toEqual({
       lastEvaluatedKey: {
         pk: 'query-users',
@@ -371,7 +382,14 @@ describe('testsuite of connection/connection', () => {
     })
 
 
-    const result2 = await connection.query('query-users', { limit: 5, exclusiveStartKey: result1.lastEvaluatedKey })
+    const result2 = await connection.query({
+      keyCondition: 'pk = :pk',
+      values: {
+        ':pk': 'query-users',
+      },
+      limit: 5,
+      exclusiveStartKey: result1.lastEvaluatedKey,
+    })
     expect(result2).toEqual({
       lastEvaluatedKey: {
         pk: 'query-users',
@@ -410,7 +428,14 @@ describe('testsuite of connection/connection', () => {
         },
       ],
     })
-    const result3 = await connection.query('query-users', { limit: 5, exclusiveStartKey: result2.lastEvaluatedKey })
+    const result3 = await connection.query({
+      keyCondition: 'pk = :pk',
+      values: {
+        ':pk': 'query-users',
+      },
+      limit: 5,
+      exclusiveStartKey: result2.lastEvaluatedKey,
+    })
     expect(result3).toEqual({
       nodes: [],
     })

@@ -1,8 +1,6 @@
 import faker from 'faker'
 
 import { Connection } from '../../src/connection/connection'
-import { createOptions } from '../../src/repository/create-options'
-import { Repository } from '../../src/repository/repository'
 import { Something } from '../stubs/something'
 import { User } from '../stubs/user'
 
@@ -56,7 +54,7 @@ describe('testsuite of repository/repository', () => {
 
   it('test create', async () => {
     const connection = await connectionPromise
-    const repository = new Repository(connection, createOptions(User))
+    const repository = connection.getRepository(User)
 
     const user1 = repository.create()
 
@@ -89,7 +87,7 @@ describe('testsuite of repository/repository', () => {
 
   it('test create and persist (onCreate)', async () => {
     const connection = await connectionPromise
-    const repository = new Repository(connection, createOptions(User))
+    const repository = connection.getRepository(User)
 
     const now = new Date().getTime()
 
@@ -188,7 +186,7 @@ describe('testsuite of repository/repository', () => {
 
   it('test assign', async () => {
     const connection = await connectionPromise
-    const repository = new Repository(connection, createOptions(User))
+    const repository = connection.getRepository(User)
 
     const fakeUser = {
       username: faker.internet.userName(),
@@ -211,7 +209,7 @@ describe('testsuite of repository/repository', () => {
 
   it('test assign and persist (onUpdate)', async () => {
     const connection = await connectionPromise
-    const repository = new Repository(connection, createOptions(User))
+    const repository = connection.getRepository(User)
 
     await connection.putItem({
       cursor: { pk: 'users', sk: '0000-0000-0000-0000' },
@@ -244,7 +242,7 @@ describe('testsuite of repository/repository', () => {
 
   it('test findOne', async () => {
     const connection = await createSafeConnection(TableName)
-    const repository = new Repository(connection, createOptions(User))
+    const repository = connection.getRepository(User)
     const fakeUser = {
       username: faker.internet.userName(),
       email: faker.internet.email(),
@@ -261,7 +259,7 @@ describe('testsuite of repository/repository', () => {
 
   it('test findMany', async () => {
     const connection = await createSafeConnection(TableName)
-    const repository = new Repository(connection, createOptions(User))
+    const repository = connection.getRepository(User)
 
     const users = await repository.persist(range(10).map(_ => repository.create({
       username: faker.internet.userName(),
@@ -279,7 +277,7 @@ describe('testsuite of repository/repository', () => {
 
   it('test remove', async () => {
     const connection = await createSafeConnection(TableName)
-    const repository = new Repository(connection, createOptions(User))
+    const repository = connection.getRepository(User)
     const fakeUser = {
       username: faker.internet.userName(),
       email: faker.internet.email(),

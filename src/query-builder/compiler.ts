@@ -1,15 +1,11 @@
-import { DynamoDB } from 'aws-sdk'
-
-import { toDynamoMap } from '../connection/transformer'
-import { TableOption, DynamoIndex } from '../interfaces/connection'
-import { FilterState, FilterCondition, RawState } from '../interfaces/query-builder'
-import { QueryBuilder } from './query-builder'
+import { TableOption, DynamoIndex, QueryParams } from '../interfaces/connection'
+import { FilterState, FilterCondition, Expression, QueryBuilderState } from '../interfaces/query-builder'
 
 export class Compiler {
   constructor(public options: TableOption) {
   }
 
-  compileFilterCondition(state: FilterCondition, aliasName: string): RawState | null {
+  compileFilterCondition(state: FilterCondition, aliasName: string): Expression | null {
     if ('brace' in state) {
       const compiled = this.compileFilterStates(state.brace, aliasName)
       return compiled ? {
@@ -32,14 +28,14 @@ export class Compiler {
     return state.resolver(state.name, aliasName)
   }
 
-  compileFilterStates(states: FilterState[], aliasName: string): RawState | null {
+  compileFilterStates(states: FilterState[], aliasName: string): Expression | null {
     if (states.length === 0) {
       return null
     }
     const compiledStates = states.map((state, stateIndex) => ({
       logic: state.logic,
       compiled: this.compileFilterCondition(state.condition, `${aliasName}_${stateIndex}`),
-    })).filter(({ compiled }) => compiled) as { logic: 'and' | 'or', compiled: RawState }[]
+    })).filter(({ compiled }) => compiled) as { logic: 'and' | 'or', compiled: Expression }[]
 
     if (compiledStates.length === 1) {
       return compiledStates[0].compiled
@@ -61,59 +57,58 @@ export class Compiler {
     }
   }
 
-  compile(builder: QueryBuilder): DynamoDB.QueryInput {
-    const result: DynamoDB.QueryInput = {
-      TableName: this.options.tableName,
-      ExpressionAttributeNames: {},
-      ExpressionAttributeValues: {},
+  compile(state: QueryBuilderState): QueryParams {
+    const result: QueryParams = {
+      names: {},
+      values: {},
     }
 
-    if (builder.keyState) {
+    if (state.key) {
       let index: DynamoIndex = this.options
-      if (builder.keyState.indexName) {
-        const indexName = builder.keyState.indexName
+      if (state.key.indexName) {
+        const indexName = state.key.indexName
         const gsi = (this.options.gsi ?? []).find(({ name }) => name === indexName)
         if (!gsi) {
           throw new Error(`Unknown index name(${indexName}).`)
         }
-        result.IndexName = gsi.name
+        result.indexName = gsi.name
         index = gsi
       }
 
-      const compiledPk = builder.keyState.pk(index.pk.name, 'pk')
+      const compiledPk = state.key.pk(index.pk.name, 'pk')
       const keyConditionExprParts = [compiledPk.expression]
-      Object.assign(result.ExpressionAttributeNames, compiledPk.names)
-      Object.assign(result.ExpressionAttributeValues, toDynamoMap(compiledPk.values))
+      Object.assign(result.names, compiledPk.names)
+      Object.assign(result.values, compiledPk.values)
 
-      if (index.sk && builder.keyState.sk) {
-        const compiledSk = builder.keyState.sk(index.sk.name, 'sk')
+      if (index.sk && state.key.sk) {
+        const compiledSk = state.key.sk(index.sk.name, 'sk')
         keyConditionExprParts.push(compiledSk.expression)
-        Object.assign(result.ExpressionAttributeNames, compiledSk.names)
-        Object.assign(result.ExpressionAttributeValues, toDynamoMap(compiledSk.values))
+        Object.assign(result.names, compiledSk.names)
+        Object.assign(result.values, compiledSk.values)
       }
 
-      result.KeyConditionExpression = keyConditionExprParts.join(' and ')
+      result.keyCondition = keyConditionExprParts.join(' and ')
     }
 
-    if (builder.filterStates) {
-      const compiled = this.compileFilterStates(builder.filterStates, 'filter')
+    if (state.filter) {
+      const compiled = this.compileFilterStates(state.filter, 'filter')
       if (compiled) {
-        result.FilterExpression = compiled.expression
-        Object.assign(result.ExpressionAttributeNames, compiled.names)
-        Object.assign(result.ExpressionAttributeValues, toDynamoMap(compiled.values))
+        result.filter = compiled.expression
+        Object.assign(result.names, compiled.names)
+        Object.assign(result.values, compiled.values)
       }
     }
 
-    if (builder.limitState) {
-      result.Limit = builder.limitState
+    if (state.limit) {
+      result.limit = state.limit
     }
 
-    if (typeof builder.scanIndexForwardState === 'boolean') {
-      result.ScanIndexForward = builder.scanIndexForwardState
+    if (typeof state.scanIndexForward === 'boolean') {
+      result.scanIndexForward = state.scanIndexForward
     }
 
-    if (builder.exclusiveStartKeyState) {
-      result.ExclusiveStartKey = toDynamoMap(builder.exclusiveStartKeyState)
+    if (state.exclusiveStartKey) {
+      result.exclusiveStartKey = state.exclusiveStartKey
     }
 
     return result

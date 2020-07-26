@@ -43,10 +43,14 @@ export interface ConnectionOptions {
 
 export interface QueryParams {
   aliasName?: string
+  keyCondition?: string
+  filter?: string
+  names?: Record<string, any>
+  values?: Record<string, DynamoData>
+  indexName?: string
   limit?: number
-  gsiName?: string
-  exclusiveStartKey?: DynamoCursor
   scanIndexForward?: boolean
+  exclusiveStartKey?: DynamoCursor
 }
 
 export interface QueryResult<TNode> {
