@@ -21,7 +21,7 @@ import { createOptions } from '../repository/create-options'
 import { Repository } from '../repository/repository'
 import { isNotEmptyObject } from '../utils/object'
 import { assertDynamoIndex } from './assert'
-import { fromDynamoMap, toDynamo, attrsToDynamoNode, dynamoNodeToAttrs, dynamoCursorToKey, toDynamoMap } from './transformer'
+import { fromDynamoMap, attrsToDynamoNode, dynamoNodeToAttrs, dynamoCursorToKey, toDynamoMap } from './transformer'
 
 export class Connection {
 

@@ -81,5 +81,6 @@ export interface DeleteItemParams {
 
 export interface DynamoNode<P> {
   cursor: DynamoCursor
+  index?: DynamoCursor[]
   data: P
 }

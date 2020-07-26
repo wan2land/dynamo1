@@ -152,6 +152,9 @@ describe('testsuite of connection/connection', () => {
         pk: 'users-2',
         sk: 'users-2_0',
       },
+      index: [
+        { pk: 'users-idx0' },
+      ],
       data: {
         value: 'this is test putItem',
       },
@@ -162,6 +165,9 @@ describe('testsuite of connection/connection', () => {
         pk: 'users-2',
         sk: 'users-2_0',
       },
+      index: [
+        { pk: 'users-idx0' },
+      ],
       data: {
         value: 'this is test putItem',
       },
@@ -175,12 +181,18 @@ describe('testsuite of connection/connection', () => {
     await expect(connection.putManyItems([
       {
         cursor: { pk: 'users-3', sk: 'users-3_0' },
+        index: [
+          { pk: 'users-idx-003001' },
+        ],
         data: {
           value: 'this is test putManyItems 0',
         },
       },
       {
         cursor: { pk: 'users-3', sk: 'users-3_1' },
+        index: [
+          { pk: 'users-idx-003002' },
+        ],
         data: {
           value: 'this is test putManyItems 1',
         },
@@ -195,12 +207,14 @@ describe('testsuite of connection/connection', () => {
 
     await expect(connection.getItem({ pk: 'users-3', sk: 'users-3_0' })).resolves.toEqual({
       cursor: { pk: 'users-3', sk: 'users-3_0' },
+      index: [{ pk: 'users-idx-003001' }],
       data: {
         value: 'this is test putManyItems 0',
       },
     })
     await expect(connection.getItem({ pk: 'users-3', sk: 'users-3_1' })).resolves.toEqual({
       cursor: { pk: 'users-3', sk: 'users-3_1' },
+      index: [{ pk: 'users-idx-003002' }],
       data: {
         value: 'this is test putManyItems 1',
       },

@@ -69,12 +69,22 @@ export function dynamoCursorToKey(cursor: DynamoCursor, index: DynamoIndex): Dyn
   })
 }
 
-export function dynamoNodeToAttrs<TData>({ cursor, data }: DynamoNode<TData>, option: TableOption): DynamoDB.AttributeMap {
-  return toDynamoMap({
+export function dynamoNodeToAttrs<TData>({ cursor, index, data }: DynamoNode<TData>, option: TableOption): DynamoDB.AttributeMap {
+  const node: Record<string, any> = {
     [option.pk.name]: cursor.pk,
     ...option.sk ? { [option.sk.name]: cursor.sk } : {},
-    ...data,
-  })
+  }
+  if (index) {
+    (option.gsi ?? []).forEach((gsi, gsiIndex) => {
+      if (index[gsiIndex] && index[gsiIndex].pk) {
+        node[gsi.pk.name] = index[gsiIndex].pk
+        if (gsi.sk) {
+          node[gsi.sk.name] = index[gsiIndex].sk ?? null
+        }
+      }
+    })
+  }
+  return toDynamoMap({ ...node, ...data })
 }
 
 export function attrsToDynamoNode<TData>(data: DynamoDB.AttributeMap, option: TableOption): DynamoNode<TData> {
@@ -87,5 +97,22 @@ export function attrsToDynamoNode<TData>(data: DynamoDB.AttributeMap, option: Ta
     cursor.sk = parsed[option.sk.name]
     delete parsed[option.sk.name]
   }
-  return { cursor, data: parsed as TData }
+
+  const index: DynamoCursor[] = []
+  ;(option.gsi ?? []).forEach((gsi, gsiIndex) => {
+    if (gsi.pk.name in parsed) {
+      index[gsiIndex] = { pk: parsed[gsi.pk.name] }
+      delete parsed[gsi.pk.name]
+      if (gsi.sk && gsi.sk.name in parsed) {
+        cursor.sk = parsed[gsi.sk.name]
+        delete parsed[gsi.sk.name]
+      }
+    }
+  })
+
+  return {
+    cursor,
+    ...index.length > 0 ? { index } : {},
+    data: parsed as TData,
+  }
 }
