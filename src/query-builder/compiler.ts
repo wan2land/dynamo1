@@ -21,7 +21,9 @@ export class Compiler {
     if ('not' in state) {
       const compiled = this.compileFilterCondition(state.not, aliasName)
       return compiled ? {
-        expression: `!(${compiled.expression})`,
+        expression: compiled.expression.startsWith('(') && compiled.expression.endsWith(')')
+          ? `not ${compiled.expression}`
+          : `not (${compiled.expression})`,
         names: compiled.names,
         values: compiled.values,
       } : null

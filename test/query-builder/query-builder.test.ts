@@ -117,7 +117,7 @@ describe('testsuite of query-builder/query-builder', () => {
     })
   })
 
-  it('test filter', () => {
+  it('test filter simple', () => {
     const qb = new QueryBuilder()
     qb.filter('users', 10)
       .orFilter('col1', 20)
@@ -126,10 +126,13 @@ describe('testsuite of query-builder/query-builder', () => {
       .andFilter('col4', '<', 50)
       .orFilter('col5', between(10, 20))
       .andFilter('col6', beginsWith('category1_'))
+      .filterNot('col7', 11)
+      .orFilterNot('col8', '>', 12)
+      .andFilterNot('col9', '<', 13)
 
     expect(compiler.compile(qb)).toEqual({
       TableName: 'table_name',
-      FilterExpression: '#filter_0 = :filter_0 or col1 = :filter_1 and col2 = :filter_2 or col3 > :filter_3 and col4 < :filter_4 or col5 between :filter_5_from and :filter_5_to and begins_with(col6, :filter_6)',
+      FilterExpression: '#filter_0 = :filter_0 or col1 = :filter_1 and col2 = :filter_2 or col3 > :filter_3 and col4 < :filter_4 or col5 between :filter_5_from and :filter_5_to and begins_with(col6, :filter_6) and not (col7 = :filter_7) or not (col8 > :filter_8) and not (col9 < :filter_9)',
       ExpressionAttributeNames: {
         '#filter_0': 'users',
       },
@@ -142,6 +145,49 @@ describe('testsuite of query-builder/query-builder', () => {
         ':filter_5_from': { N: '10' },
         ':filter_5_to': { N: '20' },
         ':filter_6': { S: 'category1_' },
+        ':filter_7': { N: '11' },
+        ':filter_8': { N: '12' },
+        ':filter_9': { N: '13' },
+      },
+    })
+  })
+
+  it('test filter brace', () => {
+    const qb = new QueryBuilder()
+      .filter((qb) => qb.filter('col1', 10).orFilter('col1', 20).orFilter((qb) => qb.filter('col1', 30).orFilter('col1', 40)))
+      .orFilter((qb) => qb.filter('col2', 11).orFilter('col2', 21))
+      .andFilter((qb) => qb.filter('col3', 12).orFilter('col3', 22))
+      .filterNot((qb) => qb.filter('col4', 13).orFilter('col4', 23))
+      .orFilterNot((qb) => qb.filter('col5', 14).orFilter('col5', 24))
+      .andFilterNot((qb) => qb.filter('col6', 15).orFilter('col6', 25))
+
+    expect(compiler.compile(qb)).toEqual({
+      TableName: 'table_name',
+      FilterExpression: [
+        '(col1 = :filter_0_0 or col1 = :filter_0_1 or (col1 = :filter_0_2_0 or col1 = :filter_0_2_1))',
+        'or (col2 = :filter_1_0 or col2 = :filter_1_1)',
+        'and (col3 = :filter_2_0 or col3 = :filter_2_1)',
+        'and not (col4 = :filter_3_0 or col4 = :filter_3_1)',
+        'or not (col5 = :filter_4_0 or col5 = :filter_4_1)',
+        'and not (col6 = :filter_5_0 or col6 = :filter_5_1)',
+      ].join(' '),
+      ExpressionAttributeNames: {
+      },
+      ExpressionAttributeValues: {
+        ':filter_0_0': { N: '10' },
+        ':filter_0_1': { N: '20' },
+        ':filter_0_2_0': { N: '30' },
+        ':filter_0_2_1': { N: '40' },
+        ':filter_1_0': { N: '11' },
+        ':filter_1_1': { N: '21' },
+        ':filter_2_0': { N: '12' },
+        ':filter_2_1': { N: '22' },
+        ':filter_3_0': { N: '13' },
+        ':filter_3_1': { N: '23' },
+        ':filter_4_0': { N: '14' },
+        ':filter_4_1': { N: '24' },
+        ':filter_5_0': { N: '15' },
+        ':filter_5_1': { N: '25' },
       },
     })
   })
