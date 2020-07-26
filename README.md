@@ -92,7 +92,3 @@ export class User {
 - [ ] Add ScanBuilder, Repository.createScanBuilder
 - [ ] Define custom error types
 - [ ] Add condition to findOne, findMany
-
-## Reference
-
-- https://docs.aws.amazon.com/ko_kr/amazondynamodb/latest/developerguide/bp-sort-keys.html
