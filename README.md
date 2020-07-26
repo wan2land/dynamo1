@@ -84,13 +84,14 @@ export class User {
 
 ## Todo
 
-- [ ] gsi
-- [ ] Connection.scan
-- [ ] Repository.scan
-- [ ] Repository.count
-- [v] QueryBuilder, Repository.createQueryBuilder
-- [ ] ScanBuilder, Repository.createScanBuilder
-- [ ] custom error types
+- [v] Add GSI support to findOne, findMany in Repository
+- [ ] Add Connection.scan
+- [ ] Add Repository.scan
+- [ ] Add Repository.count
+- [v] Add QueryBuilder, Repository.createQueryBuilder
+- [ ] Add ScanBuilder, Repository.createScanBuilder
+- [ ] Define custom error types
+- [ ] Add condition to findOne, findMany
 
 ## Reference
 
