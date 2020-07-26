@@ -7,10 +7,10 @@ export interface MetadataEntity {
   aliasName: string
   separator: string
   pk: TableIndex<any>[]
-  sk: TableIndex<any>[]
+  sk?: TableIndex<any>[]
   gsi: {
     pk: TableIndex<any>[],
-    sk: TableIndex<any>[],
+    sk?: TableIndex<any>[],
   }[]
 }
 

@@ -1,5 +1,6 @@
 import faker from 'faker'
 
+import { beginsWith } from '../../src'
 import { Connection } from '../../src/connection/connection'
 import { Something } from '../stubs/something'
 import { User } from '../stubs/user'
@@ -256,6 +257,21 @@ describe('testsuite of repository/repository', () => {
     expect(foundUser).toBeInstanceOf(User)
   })
 
+  it('test findOne by index', async () => {
+    const connection = await createSafeConnection(TableName)
+    const repository = connection.getRepository(User)
+    const fakeUser = {
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    }
+
+    const user = await repository.persist(repository.create(fakeUser))
+
+    const foundUser = await repository.findOne({ email: user.email })
+
+    expect(user).toEqual(foundUser)
+    expect(foundUser).toBeInstanceOf(User)
+  })
 
   it('test findMany', async () => {
     const connection = await createSafeConnection(TableName)
@@ -273,6 +289,25 @@ describe('testsuite of repository/repository', () => {
     for (const foundUser of foundUsers.nodes) {
       expect(foundUser).toBeInstanceOf(User)
     }
+  })
+
+  it('test createQueryBuilder', async () => {
+    const connection = await createSafeConnection(TableName)
+    const repository = connection.getRepository(User)
+
+    const users = await repository.persist(range(10).map(_ => repository.create({
+      username: faker.internet.userName(),
+      email: faker.internet.email(),
+    })))
+
+    const foundUsers = await repository.createQueryBuilder()
+      .key({ pk: 'users', sk: beginsWith(users[0].id) })
+      .limit(5)
+      .getMany()
+
+    expect(foundUsers.nodes.length).toEqual(1)
+    expect(foundUsers.nodes[0]).toBeInstanceOf(User)
+    expect(foundUsers.nodes[0]).toEqual(users[0])
   })
 
   it('test remove', async () => {

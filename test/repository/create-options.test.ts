@@ -11,7 +11,11 @@ describe('testsuite of repository/create-options', () => {
       separator: '#',
       pk: [{ type: 'text', value: 'users' }],
       sk: [{ type: 'column', value: 'id' }],
-      gsi: [],
+      gsi: [
+        {
+          pk: [{ type: 'column', value: 'email' }],
+        },
+      ],
       columns: [
         {
           target: User,

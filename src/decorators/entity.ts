@@ -1,6 +1,6 @@
-import { MetadataStorage } from '../metadata/storage'
-import { TableIndex } from '../interfaces/repository'
 import { MaybeArray } from '../interfaces/common'
+import { TableIndex } from '../interfaces/repository'
+import { MetadataStorage } from '../metadata/storage'
 import { strictArray } from '../utils/array'
 
 export interface EntityParams<TEntity> {
@@ -8,10 +8,10 @@ export interface EntityParams<TEntity> {
   aliasName?: string
   separator?: string
   pk: MaybeArray<TableIndex<TEntity>>
-  sk: MaybeArray<TableIndex<TEntity>>
+  sk?: MaybeArray<TableIndex<TEntity>>
   gsi?: MaybeArray<{
     pk: MaybeArray<TableIndex<TEntity>>,
-    sk: MaybeArray<TableIndex<TEntity>>,
+    sk?: MaybeArray<TableIndex<TEntity>>,
   }>
   metadataStorage?: MetadataStorage
 }
@@ -30,10 +30,10 @@ export function Entity<TEntity = any>(params: EntityParams<TEntity>): ClassDecor
       aliasName: params.aliasName ?? 'default',
       separator: params.separator ?? '#',
       pk: strictArray(params.pk),
-      sk: strictArray(params.sk),
+      sk: params.sk ? strictArray(params.sk) : undefined,
       gsi: strictArray(params.gsi ?? []).map(index => ({
         pk: strictArray(index.pk),
-        sk: strictArray(index.sk),
+        sk: index.sk ? strictArray(index.sk) : undefined,
       })),
     })
   }

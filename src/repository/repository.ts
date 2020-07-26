@@ -1,7 +1,7 @@
 import { Connection } from '../connection/connection'
 import { resolveIndex } from '../indexer/resolve-index'
 import { MaybeArray } from '../interfaces/common'
-import { QueryResult } from '../interfaces/connection'
+import { QueryResult, DynamoNode } from '../interfaces/connection'
 import { QueryBuilder } from '../interfaces/query-builder'
 import { RepositoryOptions } from '../interfaces/repository'
 import { Compiler } from '../query-builder/compiler'
@@ -59,7 +59,7 @@ export class Repository<TEntity extends object> {
         return column.onCreate ? Promise.resolve(column.onCreate(entity)).then((value) => { (entity as any)[column.property] = value }) : Promise.resolve()
       }))
     })).then(() => {
-      return entities.map(entity => {
+      return entities.map<DynamoNode<any>>(entity => {
         const data = {} as any
         for (const column of this.options.columns) {
           data[column.name] = (entity as any)[column.property]
@@ -67,8 +67,14 @@ export class Repository<TEntity extends object> {
         return {
           cursor: {
             pk: resolveIndex(entity, this.options.pk, this.options.separator),
-            sk: resolveIndex(entity, this.options.sk, this.options.separator),
+            ...this.options.sk ? { sk: resolveIndex(entity, this.options.sk, this.options.separator) } : {},
           },
+          index: this.options.gsi.map((gsi) => {
+            return {
+              pk: resolveIndex(entity, gsi.pk, this.options.separator),
+              ...gsi.sk ? { sk: resolveIndex(entity, gsi.sk, this.options.separator) } : {},
+            }
+          }),
           data,
         }
       })
@@ -91,7 +97,7 @@ export class Repository<TEntity extends object> {
     const entities = entity
     return this.connection.deleteManyItems(entities.map(entity => ({
       pk: resolveIndex(entity, this.options.pk, this.options.separator),
-      sk: resolveIndex(entity, this.options.sk, this.options.separator),
+      ...this.options.sk ? { sk: resolveIndex(entity, this.options.sk, this.options.separator) } : {},
     })), { aliasName: this.options.aliasName }).then((results) => {
       results.forEach((result, resultIndex) => {
         if (result) {
@@ -103,33 +109,49 @@ export class Repository<TEntity extends object> {
   }
 
   findOne(conditions: Partial<TEntity> = {}): Promise<TEntity | null> {
-    const requiredColumns = [
-      ...this.options.pk.filter(index => index.type === 'column').map(({ value }) => value),
-      ...this.options.sk.filter(index => index.type === 'column').map(({ value }) => value),
-    ]
-    for (const requiredColumn of requiredColumns) {
-      if (!(requiredColumn in conditions)) {
-        throw new Error(`Column '${typeof requiredColumn === 'symbol' ? requiredColumn.toString() : requiredColumn}' is required.`)
-      }
-    }
+    const indexName = this._getFindableIndex(Object.keys(conditions))
+
     return this.createQueryBuilder().key({
       pk: resolveIndex(conditions, this.options.pk, this.options.separator),
-      sk: resolveIndex(conditions, this.options.sk, this.options.separator),
-    }).limit(1).getOne()
+      ...this.options.sk ? { sk: resolveIndex(conditions, this.options.sk, this.options.separator) } : {},
+    }, indexName).limit(1).getOne()
   }
 
   findMany(conditions: Partial<TEntity> = {}): Promise<QueryResult<TEntity>> {
-    const requiredColumns = [
-      ...this.options.pk.filter(index => index.type === 'column').map(({ value }) => value),
-    ]
-    for (const requiredColumn of requiredColumns) {
-      if (!(requiredColumn in conditions)) {
-        throw new Error(`Column '${typeof requiredColumn === 'symbol' ? requiredColumn.toString() : requiredColumn}' is required.`)
-      }
-    }
+    const indexName = this._getFindableIndex(Object.keys(conditions))
+
     return this.createQueryBuilder().key({
       pk: resolveIndex(conditions, this.options.pk, this.options.separator),
-      sk: resolveIndex(conditions, this.options.sk, this.options.separator),
-    }).getMany()
+      ...this.options.sk ? { sk: resolveIndex(conditions, this.options.sk, this.options.separator) } : {},
+    }, indexName).getMany()
+  }
+
+  _getFindableIndex(propKeys: PropertyKey[]): string | undefined {
+    const tableRequiredPropKeys = this.options.pk.filter(index => index.type === 'column').map(({ value }) => value)
+    try {
+      for (const requiredPropKey of tableRequiredPropKeys) {
+        if (!propKeys.includes(requiredPropKey)) {
+          throw new Error(`Column '${typeof requiredPropKey === 'symbol' ? requiredPropKey.toString() : requiredPropKey}' is required.`)
+        }
+      }
+      return
+    } catch (e) {
+      let foundIndex = -1
+      this.options.gsi.map(gsi => gsi.pk.filter(index => index.type === 'column').map(({ value }) => value)).forEach((gsiRequiredPropKeys, gsiIndex) => {
+        if (foundIndex > -1) {
+          return
+        }
+        for (const requiredPropKey of gsiRequiredPropKeys) {
+          if (!propKeys.includes(requiredPropKey)) {
+            return
+          }
+        }
+        foundIndex = gsiIndex
+      })
+      if (foundIndex === -1) {
+        throw e
+      }
+      return (this.compiler.options.gsi ?? [])[foundIndex].name
+    }
   }
 }

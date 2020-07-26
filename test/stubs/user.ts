@@ -6,6 +6,11 @@ import { Column, Entity, column, text } from '../../src'
   name: 'users',
   pk: text('users'),
   sk: column('id'),
+  gsi: [
+    {
+      pk: column('email'),
+    },
+  ],
 })
 export class User {
   @Column({ name: 'user_id', onCreate: _ => uuid() })
