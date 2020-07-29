@@ -17,9 +17,9 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "prepack": "npm run test && npm run build",
+    "prepack": "npm ci && npm run test && npm run build",
     "build": "rimraf ./lib && tsc -p tsconfig.build.json && babel src --out-dir lib --extensions \".ts\"",
-    "test": "npm run build && npm run test:lint && npm run test:unit",
+    "test": "npm run test:lint && npm run test:unit",
     "test:lint": "eslint src/**/* test/**/*",
     "test:unit": "jest test"
   },
