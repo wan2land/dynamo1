@@ -9,11 +9,11 @@ describe('testsuite of repository/create-options', () => {
       name: 'users',
       aliasName: 'default',
       separator: '#',
-      pk: [{ type: 'text', value: 'users' }],
-      sk: [{ type: 'column', value: 'id' }],
+      hashKey: [{ type: 'text', value: 'users' }],
+      rangeKey: [{ type: 'column', value: 'id' }],
       gsi: [
         {
-          pk: [{ type: 'column', value: 'email' }],
+          hashKey: [{ type: 'column', value: 'email' }],
         },
       ],
       columns: [

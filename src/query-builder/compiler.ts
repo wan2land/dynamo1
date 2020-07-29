@@ -1,4 +1,4 @@
-import { TableOption, DynamoIndex, QueryParams } from '../interfaces/connection'
+import { TableOption, DynamoIndexOption, QueryParams } from '../interfaces/connection'
 import { FilterState, FilterCondition, Expression, QueryBuilderState } from '../interfaces/query-builder'
 
 export class Compiler {
@@ -64,7 +64,7 @@ export class Compiler {
     }
 
     if (state.key) {
-      let index: DynamoIndex = this.options
+      let index: DynamoIndexOption = this.options
       if (state.key.indexName) {
         const indexName = state.key.indexName
         const gsi = (this.options.gsi ?? []).find(({ name }) => name === indexName)
@@ -75,16 +75,16 @@ export class Compiler {
         index = gsi
       }
 
-      const compiledPk = state.key.pk(index.pk.name, 'pk')
-      const keyConditionExprParts = [compiledPk.expression]
-      Object.assign(result.names, compiledPk.names)
-      Object.assign(result.values, compiledPk.values)
+      const compiledHashKey = state.key.hashKey(index.hashKey.name, 'hashkey')
+      const keyConditionExprParts = [compiledHashKey.expression]
+      Object.assign(result.names, compiledHashKey.names)
+      Object.assign(result.values, compiledHashKey.values)
 
-      if (index.sk && state.key.sk) {
-        const compiledSk = state.key.sk(index.sk.name, 'sk')
-        keyConditionExprParts.push(compiledSk.expression)
-        Object.assign(result.names, compiledSk.names)
-        Object.assign(result.values, compiledSk.values)
+      if (index.rangeKey && state.key.rangeKey) {
+        const compiledRangeKey = state.key.rangeKey(index.rangeKey.name, 'rangekey')
+        keyConditionExprParts.push(compiledRangeKey.expression)
+        Object.assign(result.names, compiledRangeKey.names)
+        Object.assign(result.values, compiledRangeKey.values)
       }
 
       result.keyCondition = keyConditionExprParts.join(' and ')

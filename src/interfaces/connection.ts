@@ -16,21 +16,21 @@ export interface DynamoKeyOption {
   type?: DynamoKeyTypeOf
 }
 
+export interface DynamoIndexOption {
+  hashKey: DynamoKeyOption
+  rangeKey?: DynamoKeyOption
+}
+
 export interface DynamoIndex {
-  pk: DynamoKeyOption
-  sk?: DynamoKeyOption
+  hashKey: DynamoKey
+  rangeKey?: DynamoKey
 }
 
-export interface DynamoCursor {
-  pk: DynamoKey
-  sk?: DynamoKey
-}
-
-export interface Gsi extends DynamoIndex {
+export interface Gsi extends DynamoIndexOption {
   name: string
 }
 
-export interface TableOption extends DynamoIndex {
+export interface TableOption extends DynamoIndexOption {
   tableName: string
   aliasName?: string
   gsi?: Gsi[]
@@ -59,12 +59,12 @@ export interface QueryParams {
   indexName?: string
   limit?: number
   scanIndexForward?: boolean
-  exclusiveStartKey?: DynamoCursor
+  exclusiveStartKey?: Record<string, any>
 }
 
 export interface QueryResult<TNode> {
   nodes: TNode[]
-  lastEvaluatedKey?: DynamoCursor
+  lastEvaluatedKey?: Record<string, any>
 }
 
 export interface GetItemParams {
@@ -80,7 +80,7 @@ export interface DeleteItemParams {
 }
 
 export interface DynamoNode<P> {
-  cursor: DynamoCursor
-  index?: DynamoCursor[]
+  cursor: DynamoIndex
+  index?: DynamoIndex[]
   data: P
 }

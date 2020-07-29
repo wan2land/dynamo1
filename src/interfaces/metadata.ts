@@ -6,11 +6,11 @@ export interface MetadataEntity {
   name: string
   aliasName: string
   separator: string
-  pk: TableIndex<any>[]
-  sk?: TableIndex<any>[]
+  hashKey: TableIndex<any>[]
+  rangeKey?: TableIndex<any>[]
   gsi: {
-    pk: TableIndex<any>[],
-    sk?: TableIndex<any>[],
+    hashKey: TableIndex<any>[],
+    rangeKey?: TableIndex<any>[],
   }[]
 }
 

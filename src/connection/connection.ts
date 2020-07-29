@@ -6,7 +6,7 @@ import {
   DynamoKey,
   CountParams,
   DeleteItemParams,
-  DynamoCursor,
+  DynamoIndex,
   DynamoNode,
   GetItemParams,
   PutItemParams,
@@ -14,7 +14,7 @@ import {
   TableOption,
   QueryParams,
   QueryResult,
-  DynamoIndex,
+  DynamoIndexOption,
 } from '../interfaces/connection'
 import { Compiler } from '../query-builder/compiler'
 import { createOptions } from '../repository/create-options'
@@ -89,13 +89,9 @@ export class Connection {
     }).promise().then(({ Items, LastEvaluatedKey }) => {
       const nodes = (Items ?? []).map(item => attrsToDynamoNode<TData>(item, option))
       if (LastEvaluatedKey) {
-        const lastKey = fromDynamoMap(LastEvaluatedKey)
         return {
           nodes,
-          lastEvaluatedKey: {
-            pk: lastKey[option.pk.name],
-            ...option.sk ? { sk: lastKey[option.sk.name] } : {},
-          },
+          lastEvaluatedKey: fromDynamoMap(LastEvaluatedKey),
         }
       }
       return {
@@ -104,7 +100,7 @@ export class Connection {
     })
   }
 
-  getItem<TData extends Record<string, any>>(cursor: DynamoCursor, params: GetItemParams = {}): Promise<DynamoNode<TData> | null> {
+  getItem<TData extends Record<string, any>>(cursor: DynamoIndex, params: GetItemParams = {}): Promise<DynamoNode<TData> | null> {
     const option = this._findOption(params)
     assertDynamoIndex(option, cursor)
 
@@ -116,7 +112,7 @@ export class Connection {
     })
   }
 
-  getManyItems<TData extends Record<string, any>>(cursors: DynamoCursor[], params: GetItemParams = {}): Promise<DynamoNode<TData>[]> {
+  getManyItems<TData extends Record<string, any>>(cursors: DynamoIndex[], params: GetItemParams = {}): Promise<DynamoNode<TData>[]> {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
@@ -172,16 +168,16 @@ export class Connection {
         .filter(({ PutRequest }) => PutRequest)
         .map(({ PutRequest }) => fromDynamoMap(PutRequest!.Item))
 
-      const pk = option.pk
-      if (option.sk) {
-        const optionSk = option.sk
-        return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[pk.name] === cursor.pk && item[optionSk.name] === cursor.sk))
+      const hashKeyOption = option.hashKey
+      if (option.rangeKey) {
+        const optionSk = option.rangeKey
+        return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[hashKeyOption.name] === cursor.hashKey && item[optionSk.name] === cursor.rangeKey))
       }
-      return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[pk.name] === cursor.pk))
+      return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[hashKeyOption.name] === cursor.hashKey))
     })
   }
 
-  public deleteItem<TData extends Record<string, any>>(cursor: DynamoCursor, params: DeleteItemParams = {}): Promise<DynamoNode<TData> | null> {
+  public deleteItem<TData extends Record<string, any>>(cursor: DynamoIndex, params: DeleteItemParams = {}): Promise<DynamoNode<TData> | null> {
     const option = this._findOption(params)
     assertDynamoIndex(option, cursor)
 
@@ -193,7 +189,7 @@ export class Connection {
     })
   }
 
-  public deleteManyItems(cursors: DynamoCursor[], params: DeleteItemParams = {}): Promise<boolean[]> {
+  public deleteManyItems(cursors: DynamoIndex[], params: DeleteItemParams = {}): Promise<boolean[]> {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
@@ -218,11 +214,11 @@ export class Connection {
         .filter(({ DeleteRequest }) => DeleteRequest)
         .map(({ DeleteRequest }) => fromDynamoMap(DeleteRequest!.Key))
 
-      if (option.sk) {
-        const optionSk = option.sk
-        return cursors.map((cursor) => !unprocessedKeys.find((item) => item[option.pk.name] === cursor.pk && item[optionSk.name] === cursor.sk))
+      if (option.rangeKey) {
+        const optionSk = option.rangeKey
+        return cursors.map((cursor) => !unprocessedKeys.find((item) => item[option.hashKey.name] === cursor.hashKey && item[optionSk.name] === cursor.rangeKey))
       }
-      return cursors.map((cursor) => !unprocessedKeys.find((item) => item[option.pk.name] === cursor.pk))
+      return cursors.map((cursor) => !unprocessedKeys.find((item) => item[option.hashKey.name] === cursor.hashKey))
     })
   }
 
@@ -230,7 +226,7 @@ export class Connection {
     return this.tableOptions.get(params.aliasName ?? 'default') ?? [...this.tableOptions.entries()][0][1]
   }
 
-  _findOptionAndIndex(params: { aliasName?: string, indexName?: string }): [TableOption, DynamoIndex] {
+  _findOptionAndIndex(params: { aliasName?: string, indexName?: string }): [TableOption, DynamoIndexOption] {
     const option = this._findOption(params)
     if (!params.indexName) {
       return [option, option]

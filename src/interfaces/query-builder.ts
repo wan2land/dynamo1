@@ -1,18 +1,18 @@
 // @refs https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
 
-import { DynamoKey, DynamoData, DynamoCursor, QueryResult } from './connection'
+import { DynamoKey, DynamoData, DynamoIndex, QueryResult } from './connection'
 
 export type KeyOperator = '=' | '<' | '<=' | '>' | '>='
 export type Comparator = '=' | '<>' | '<' | '<=' | '>' | '>='
 
 export interface KeyCondition {
-  pk: DynamoKey | [KeyOperator, DynamoKey] | OperandResolver
-  sk?: DynamoKey | [KeyOperator, DynamoKey] | OperandResolver
+  hashKey: DynamoKey | [KeyOperator, DynamoKey] | OperandResolver
+  rangeKey?: DynamoKey | [KeyOperator, DynamoKey] | OperandResolver
 }
 
 export interface KeyState {
-  pk: OperandResolver
-  sk?: OperandResolver
+  hashKey: OperandResolver
+  rangeKey?: OperandResolver
   indexName?: string
 }
 
@@ -49,7 +49,7 @@ export interface QueryBuilderState {
   filter?: FilterState[]
   limit?: number
   scanIndexForward?: boolean
-  exclusiveStartKey?: DynamoCursor
+  exclusiveStartKey?: DynamoIndex
 }
 
 export interface FilterBuilder {
@@ -89,7 +89,7 @@ export interface QueryBuilder<TNode> extends FilterBuilder {
   key(key: KeyCondition, indexName?: string): this
   limit(limit: number | null): this
   scanIndexForward(forward: boolean | null): this
-  exclusiveStartKey(key: DynamoCursor | null): this
+  exclusiveStartKey(key: DynamoIndex | null): this
 
   getOne(): Promise<TNode | null>
   getMany(): Promise<QueryResult<TNode>>

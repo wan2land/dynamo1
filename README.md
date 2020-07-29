@@ -26,22 +26,14 @@ const connection = createConnection([
   {
     tableName: `${STAGE}-datas`,
     aliasName: 'datas',
-    pk: { name: string, type: Buffer },
-    sk: { name: string, type: String },
+    hashKey: { name: string, type: Buffer },
+    rangeKey: { name: string, type: String },
     gsi: [
-      { name: 'gsi1', pk: { name: string, type: String }, sk: { name: string, type: String } },
-      { name: 'gsi2', pk: { name: string, type: String }, sk: { name: string, type: String } },
-      { name: 'gsi3', pk: { name: string, type: String }, sk: { name: string, type: String } },
+      { name: 'gsi1', hashKey: { name: string, type: String }, rangeKey: { name: string, type: String } },
+      { name: 'gsi2', hashKey: { name: string, type: String }, rangeKey: { name: string, type: String } },
+      { name: 'gsi3', hashKey: { name: string, type: String }, rangeKey: { name: string, type: String } },
     ],
   }, // tables[0] is default
-  // // need one more table?
-  // {
-  //   tableName: string
-  //   pk: string
-  //   pkType: String or Number or Buffer
-  //   sortKey: string
-  //   sortKeyType: String or Number or Buffer
-  // },
 ])
 
 ```
@@ -56,8 +48,8 @@ import { Column, Entity, column, text } from 'dynamo1'
 
 @Entity<User>({
   name: 'users',
-  pk: text('users'),
-  sk: column('id'),
+  hashKey: text('users'),
+  rangeKey: column('id'),
 })
 export class User {
   @Column({ name: 'user_id', onCreate: _ => uuid() })

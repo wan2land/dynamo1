@@ -4,8 +4,8 @@ import { Column, Entity, column, text } from '../../src'
 
 @Entity<Something>({
   name: 'sometings',
-  pk: text('sometings'),
-  sk: column('id'),
+  hashKey: text('sometings'),
+  rangeKey: column('id'),
 })
 export class Something {
   @Column({ onCreate: _ => uuid() })

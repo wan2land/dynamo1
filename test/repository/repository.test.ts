@@ -11,8 +11,8 @@ async function createSafeConnection(tableName: string): Promise<Connection> {
   const connection = new Connection(ddb, {
     tables: [{
       tableName,
-      pk: { name: 'pk' },
-      sk: { name: 'sk' },
+      hashKey: { name: 'hash_key' },
+      rangeKey: { name: 'range_key' },
     }],
   })
   const tableNames = await ddb.listTables().promise().then(({ TableNames }) => TableNames ?? [])
@@ -22,12 +22,12 @@ async function createSafeConnection(tableName: string): Promise<Connection> {
   await ddb.createTable({
     TableName: tableName,
     KeySchema: [
-      { AttributeName: 'pk', KeyType: 'HASH' },
-      { AttributeName: 'sk', KeyType: 'RANGE' },
+      { AttributeName: 'hash_key', KeyType: 'HASH' },
+      { AttributeName: 'range_key', KeyType: 'RANGE' },
     ],
     AttributeDefinitions: [
-      { AttributeName: 'pk', AttributeType: 'S' },
-      { AttributeName: 'sk', AttributeType: 'S' },
+      { AttributeName: 'hash_key', AttributeType: 'S' },
+      { AttributeName: 'range_key', AttributeType: 'S' },
     ],
     BillingMode: 'PAY_PER_REQUEST',
   }).promise()
@@ -114,10 +114,10 @@ describe('testsuite of repository/repository', () => {
     })
     expect(user).toBeInstanceOf(User)
 
-    await expect(connection.getItem({ pk: 'users', sk: user.id })).resolves.toEqual({
+    await expect(connection.getItem({ hashKey: 'users', rangeKey: user.id })).resolves.toEqual({
       cursor: {
-        pk: 'users',
-        sk: user.id,
+        hashKey: 'users',
+        rangeKey: user.id,
       },
       data: {
         user_id: user.id,
@@ -213,7 +213,7 @@ describe('testsuite of repository/repository', () => {
     const repository = connection.getRepository(User)
 
     await connection.putItem({
-      cursor: { pk: 'users', sk: '0000-0000-0000-0000' },
+      cursor: { hashKey: 'users', rangeKey: '0000-0000-0000-0000' },
       data: {
         user_id: '0000-0000-0000-0000',
         username: 'wan2land',
@@ -301,7 +301,7 @@ describe('testsuite of repository/repository', () => {
     })))
 
     const foundUsers = await repository.createQueryBuilder()
-      .key({ pk: 'users', sk: beginsWith(users[0].id) })
+      .key({ hashKey: 'users', rangeKey: beginsWith(users[0].id) })
       .limit(5)
       .getMany()
 

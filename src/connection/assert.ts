@@ -1,5 +1,5 @@
 
-import { DynamoKeyTypeOf, DynamoIndex, DynamoCursor } from '../interfaces/connection'
+import { DynamoKeyTypeOf, DynamoIndexOption, DynamoIndex } from '../interfaces/connection'
 
 export function assertDynamoKeyType(type: DynamoKeyTypeOf, value: any) {
   const typeofValue = value instanceof Buffer ? 'buffer' : typeof value
@@ -16,9 +16,9 @@ export function assertDynamoKeyType(type: DynamoKeyTypeOf, value: any) {
   throw new Error(`Expected ${type.name}, but the given is ${typeofValue}.`)
 }
 
-export function assertDynamoIndex(index: DynamoIndex, data: DynamoCursor) {
-  assertDynamoKeyType(index.pk.type ?? String, data.pk)
-  if (index.sk) {
-    assertDynamoKeyType(index.sk.type ?? String, data.sk)
+export function assertDynamoIndex(index: DynamoIndexOption, data: DynamoIndex) {
+  assertDynamoKeyType(index.hashKey.type ?? String, data.hashKey)
+  if (index.rangeKey) {
+    assertDynamoKeyType(index.rangeKey.type ?? String, data.rangeKey)
   }
 }

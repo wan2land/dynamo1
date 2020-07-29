@@ -66,13 +66,13 @@ export class Repository<TEntity extends object> {
         }
         return {
           cursor: {
-            pk: resolveIndex(entity, this.options.pk, this.options.separator),
-            ...this.options.sk ? { sk: resolveIndex(entity, this.options.sk, this.options.separator) } : {},
+            hashKey: resolveIndex(entity, this.options.hashKey, this.options.separator),
+            ...this.options.rangeKey ? { rangeKey: resolveIndex(entity, this.options.rangeKey, this.options.separator) } : {},
           },
           index: this.options.gsi.map((gsi) => {
             return {
-              pk: resolveIndex(entity, gsi.pk, this.options.separator),
-              ...gsi.sk ? { sk: resolveIndex(entity, gsi.sk, this.options.separator) } : {},
+              hashKey: resolveIndex(entity, gsi.hashKey, this.options.separator),
+              ...gsi.rangeKey ? { rangeKey: resolveIndex(entity, gsi.rangeKey, this.options.separator) } : {},
             }
           }),
           data,
@@ -96,8 +96,8 @@ export class Repository<TEntity extends object> {
     }
     const entities = entity
     return this.connection.deleteManyItems(entities.map(entity => ({
-      pk: resolveIndex(entity, this.options.pk, this.options.separator),
-      ...this.options.sk ? { sk: resolveIndex(entity, this.options.sk, this.options.separator) } : {},
+      hashKey: resolveIndex(entity, this.options.hashKey, this.options.separator),
+      ...this.options.rangeKey ? { rangeKey: resolveIndex(entity, this.options.rangeKey, this.options.separator) } : {},
     })), { aliasName: this.options.aliasName }).then((results) => {
       results.forEach((result, resultIndex) => {
         if (result) {
@@ -112,8 +112,8 @@ export class Repository<TEntity extends object> {
     const indexName = this._getFindableIndex(Object.keys(conditions))
 
     return this.createQueryBuilder().key({
-      pk: resolveIndex(conditions, this.options.pk, this.options.separator),
-      ...this.options.sk ? { sk: resolveIndex(conditions, this.options.sk, this.options.separator) } : {},
+      hashKey: resolveIndex(conditions, this.options.hashKey, this.options.separator),
+      ...this.options.rangeKey ? { rangeKey: resolveIndex(conditions, this.options.rangeKey, this.options.separator) } : {},
     }, indexName).limit(1).getOne()
   }
 
@@ -121,13 +121,13 @@ export class Repository<TEntity extends object> {
     const indexName = this._getFindableIndex(Object.keys(conditions))
 
     return this.createQueryBuilder().key({
-      pk: resolveIndex(conditions, this.options.pk, this.options.separator),
-      ...this.options.sk ? { sk: resolveIndex(conditions, this.options.sk, this.options.separator) } : {},
+      hashKey: resolveIndex(conditions, this.options.hashKey, this.options.separator),
+      ...this.options.rangeKey ? { rangeKey: resolveIndex(conditions, this.options.rangeKey, this.options.separator) } : {},
     }, indexName).getMany()
   }
 
   _getFindableIndex(propKeys: PropertyKey[]): string | undefined {
-    const tableRequiredPropKeys = this.options.pk.filter(index => index.type === 'column').map(({ value }) => value)
+    const tableRequiredPropKeys = this.options.hashKey.filter(index => index.type === 'column').map(({ value }) => value)
     try {
       for (const requiredPropKey of tableRequiredPropKeys) {
         if (!propKeys.includes(requiredPropKey)) {
@@ -137,7 +137,7 @@ export class Repository<TEntity extends object> {
       return
     } catch (e) {
       let foundIndex = -1
-      this.options.gsi.map(gsi => gsi.pk.filter(index => index.type === 'column').map(({ value }) => value)).forEach((gsiRequiredPropKeys, gsiIndex) => {
+      this.options.gsi.map(gsi => gsi.hashKey.filter(index => index.type === 'column').map(({ value }) => value)).forEach((gsiRequiredPropKeys, gsiIndex) => {
         if (foundIndex > -1) {
           return
         }

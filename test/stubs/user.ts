@@ -4,11 +4,11 @@ import { Column, Entity, column, text } from '../../src'
 
 @Entity<User>({
   name: 'users',
-  pk: text('users'),
-  sk: column('id'),
+  hashKey: text('users'),
+  rangeKey: column('id'),
   gsi: [
     {
-      pk: column('email'),
+      hashKey: column('email'),
     },
   ],
 })

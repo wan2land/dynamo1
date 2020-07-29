@@ -1,6 +1,6 @@
 import { DynamoDB } from 'aws-sdk'
 
-import { DynamoNode, TableOption, DynamoCursor, DynamoIndex } from '../interfaces/connection'
+import { DynamoNode, TableOption, DynamoIndex, DynamoIndexOption } from '../interfaces/connection'
 
 
 export function toDynamoMap(item: Record<string, any>): DynamoDB.AttributeMap {
@@ -62,24 +62,24 @@ export function fromDynamo(item: DynamoDB.AttributeValue): any {
   throw new TypeError(`Unknown Dynamo attribute value. (item=${JSON.stringify(item)})`)
 }
 
-export function dynamoCursorToKey(cursor: DynamoCursor, index: DynamoIndex): DynamoDB.Key {
+export function dynamoCursorToKey(cursor: DynamoIndex, index: DynamoIndexOption): DynamoDB.Key {
   return toDynamoMap({
-    [index.pk.name]: cursor.pk,
-    ...index.sk ? { [index.sk.name]: cursor.sk } : {},
+    [index.hashKey.name]: cursor.hashKey,
+    ...index.rangeKey ? { [index.rangeKey.name]: cursor.rangeKey } : {},
   })
 }
 
 export function dynamoNodeToAttrs<TData>({ cursor, index, data }: DynamoNode<TData>, option: TableOption): DynamoDB.AttributeMap {
   const node: Record<string, any> = {
-    [option.pk.name]: cursor.pk,
-    ...option.sk ? { [option.sk.name]: cursor.sk } : {},
+    [option.hashKey.name]: cursor.hashKey,
+    ...option.rangeKey ? { [option.rangeKey.name]: cursor.rangeKey } : {},
   }
   if (index) {
     (option.gsi ?? []).forEach((gsi, gsiIndex) => {
-      if (index[gsiIndex] && index[gsiIndex].pk) {
-        node[gsi.pk.name] = index[gsiIndex].pk
-        if (gsi.sk) {
-          node[gsi.sk.name] = index[gsiIndex].sk ?? null
+      if (index[gsiIndex] && index[gsiIndex].hashKey) {
+        node[gsi.hashKey.name] = index[gsiIndex].hashKey
+        if (gsi.rangeKey) {
+          node[gsi.rangeKey.name] = index[gsiIndex].rangeKey ?? null
         }
       }
     })
@@ -90,22 +90,22 @@ export function dynamoNodeToAttrs<TData>({ cursor, index, data }: DynamoNode<TDa
 export function attrsToDynamoNode<TData>(data: DynamoDB.AttributeMap, option: TableOption): DynamoNode<TData> {
   const parsed = fromDynamoMap(data)
 
-  const cursor: DynamoCursor = { pk: parsed[option.pk.name] }
-  delete parsed[option.pk.name]
+  const cursor: DynamoIndex = { hashKey: parsed[option.hashKey.name] }
+  delete parsed[option.hashKey.name]
 
-  if (option.sk && option.sk.name in parsed) {
-    cursor.sk = parsed[option.sk.name]
-    delete parsed[option.sk.name]
+  if (option.rangeKey && option.rangeKey.name in parsed) {
+    cursor.rangeKey = parsed[option.rangeKey.name]
+    delete parsed[option.rangeKey.name]
   }
 
-  const index: DynamoCursor[] = []
+  const index: DynamoIndex[] = []
   ;(option.gsi ?? []).forEach((gsi, gsiIndex) => {
-    if (gsi.pk.name in parsed) {
-      index[gsiIndex] = { pk: parsed[gsi.pk.name] }
-      delete parsed[gsi.pk.name]
-      if (gsi.sk && gsi.sk.name in parsed) {
-        cursor.sk = parsed[gsi.sk.name]
-        delete parsed[gsi.sk.name]
+    if (gsi.hashKey.name in parsed) {
+      index[gsiIndex] = { hashKey: parsed[gsi.hashKey.name] }
+      delete parsed[gsi.hashKey.name]
+      if (gsi.rangeKey && gsi.rangeKey.name in parsed) {
+        cursor.rangeKey = parsed[gsi.rangeKey.name]
+        delete parsed[gsi.rangeKey.name]
       }
     }
   })

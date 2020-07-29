@@ -7,11 +7,11 @@ export interface EntityParams<TEntity> {
   name?: string
   aliasName?: string
   separator?: string
-  pk: MaybeArray<TableIndex<TEntity>>
-  sk?: MaybeArray<TableIndex<TEntity>>
+  hashKey: MaybeArray<TableIndex<TEntity>>
+  rangeKey?: MaybeArray<TableIndex<TEntity>>
   gsi?: MaybeArray<{
-    pk: MaybeArray<TableIndex<TEntity>>,
-    sk?: MaybeArray<TableIndex<TEntity>>,
+    hashKey: MaybeArray<TableIndex<TEntity>>,
+    rangeKey?: MaybeArray<TableIndex<TEntity>>,
   }>
   metadataStorage?: MetadataStorage
 }
@@ -29,11 +29,11 @@ export function Entity<TEntity = any>(params: EntityParams<TEntity>): ClassDecor
       name: params.name ?? target.name,
       aliasName: params.aliasName ?? 'default',
       separator: params.separator ?? '#',
-      pk: strictArray(params.pk),
-      sk: params.sk ? strictArray(params.sk) : undefined,
+      hashKey: strictArray(params.hashKey),
+      rangeKey: params.rangeKey ? strictArray(params.rangeKey) : undefined,
       gsi: strictArray(params.gsi ?? []).map(index => ({
-        pk: strictArray(index.pk),
-        sk: index.sk ? strictArray(index.sk) : undefined,
+        hashKey: strictArray(index.hashKey),
+        rangeKey: index.rangeKey ? strictArray(index.rangeKey) : undefined,
       })),
     })
   }

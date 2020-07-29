@@ -1,4 +1,4 @@
-import { DynamoKey, DynamoCursor, QueryResult } from '../interfaces/connection'
+import { DynamoKey, DynamoIndex, QueryResult } from '../interfaces/connection'
 import { KeyCondition, OperandResolver, KeyOperator, QueryBuilderState, QueryBuilder, FilterState } from '../interfaces/query-builder'
 import { QueryExecutor } from '../interfaces/query-executor'
 import { BaseFilterBuilder } from './base-filter-builder'
@@ -30,8 +30,8 @@ export class DefaultQueryBuilder<TNode = any> extends BaseFilterBuilder implemen
 
   key(key: KeyCondition, indexName?: string): this {
     this.stateRoot.key = {
-      pk: normalizeCondition(key.pk),
-      ...key.sk ? { sk: normalizeCondition(key.sk) } : {},
+      hashKey: normalizeCondition(key.hashKey),
+      ...key.rangeKey ? { rangeKey: normalizeCondition(key.rangeKey) } : {},
       indexName,
     }
     return this
@@ -47,7 +47,7 @@ export class DefaultQueryBuilder<TNode = any> extends BaseFilterBuilder implemen
     return this
   }
 
-  exclusiveStartKey(key: DynamoCursor | null): this {
+  exclusiveStartKey(key: DynamoIndex | null): this {
     this.stateRoot.exclusiveStartKey = key ?? undefined
     return this
   }

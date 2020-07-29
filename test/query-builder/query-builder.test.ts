@@ -8,41 +8,41 @@ import { beginsWith } from '../../src/query-builder/operand/function'
 describe('testsuite of query-builder/query-builder', () => {
   const compiler = new Compiler({
     tableName: 'table_name',
-    pk: { name: 'table_pk' },
-    sk: { name: 'table_sk' },
+    hashKey: { name: 'table_hash_key' },
+    rangeKey: { name: 'table_range_key' },
     gsi: [
       {
         name: 'gsi0',
-        pk: { name: 'gsi0_pk' },
-        sk: { name: 'gsi0_sk' },
+        hashKey: { name: 'gsi0_hash_key' },
+        rangeKey: { name: 'gsi0_range_key' },
       },
     ],
   })
 
   it('test key equal operator', () => {
     expect(compiler.compile(new DefaultQueryBuilder().key({
-      pk: 'users',
-      sk: 10,
+      hashKey: 'users',
+      rangeKey: 10,
     }).stateRoot)).toEqual({
-      keyCondition: 'table_pk = :pk and table_sk = :sk',
+      keyCondition: 'table_hash_key = :hashkey and table_range_key = :rangekey',
       names: {
       },
       values: {
-        ':pk': 'users',
-        ':sk': 10,
+        ':hashkey': 'users',
+        ':rangekey': 10,
       },
     })
 
     expect(compiler.compile(new DefaultQueryBuilder().key({
-      pk: 'users',
-      sk: ['=', 10],
+      hashKey: 'users',
+      rangeKey: ['=', 10],
     }).stateRoot)).toEqual({
-      keyCondition: 'table_pk = :pk and table_sk = :sk',
+      keyCondition: 'table_hash_key = :hashkey and table_range_key = :rangekey',
       names: {
       },
       values: {
-        ':pk': 'users',
-        ':sk': 10,
+        ':hashkey': 'users',
+        ':rangekey': 10,
       },
     })
   })
@@ -51,15 +51,15 @@ describe('testsuite of query-builder/query-builder', () => {
     const operators = ['>', '>=', '<', '<='] as ('>' | '>=' | '<' | '<=')[]
     for (const operator of operators) {
       expect(compiler.compile(new DefaultQueryBuilder().key({
-        pk: 'users',
-        sk: [operator, 10],
+        hashKey: 'users',
+        rangeKey: [operator, 10],
       }).stateRoot)).toEqual({
-        keyCondition: `table_pk = :pk and table_sk ${operator} :sk`,
+        keyCondition: `table_hash_key = :hashkey and table_range_key ${operator} :rangekey`,
         names: {
         },
         values: {
-          ':pk': 'users',
-          ':sk': 10,
+          ':hashkey': 'users',
+          ':rangekey': 10,
         },
       })
     }
@@ -67,47 +67,47 @@ describe('testsuite of query-builder/query-builder', () => {
 
   it('test key beginsWith operator', () => {
     expect(compiler.compile(new DefaultQueryBuilder().key({
-      pk: 'users',
-      sk: beginsWith('wan2land-'),
+      hashKey: 'users',
+      rangeKey: beginsWith('wan2land-'),
     }).stateRoot)).toEqual({
-      keyCondition: 'table_pk = :pk and begins_with(table_sk, :sk)',
+      keyCondition: 'table_hash_key = :hashkey and begins_with(table_range_key, :rangekey)',
       names: {
       },
       values: {
-        ':pk': 'users',
-        ':sk': 'wan2land-',
+        ':hashkey': 'users',
+        ':rangekey': 'wan2land-',
       },
     })
   })
 
   it('test key between operator', () => {
     expect(compiler.compile(new DefaultQueryBuilder().key({
-      pk: 'users',
-      sk: between('id_0000', 'id_0100'),
+      hashKey: 'users',
+      rangeKey: between('id_0000', 'id_0100'),
     }).stateRoot)).toEqual({
-      keyCondition: 'table_pk = :pk and table_sk between :sk_from and :sk_to',
+      keyCondition: 'table_hash_key = :hashkey and table_range_key between :rangekey_from and :rangekey_to',
       names: {
       },
       values: {
-        ':pk': 'users',
-        ':sk_from': 'id_0000',
-        ':sk_to': 'id_0100',
+        ':hashkey': 'users',
+        ':rangekey_from': 'id_0000',
+        ':rangekey_to': 'id_0100',
       },
     })
   })
 
   it('test key by index name', () => {
     expect(compiler.compile(new DefaultQueryBuilder().key({
-      pk: 'users',
-      sk: 10,
+      hashKey: 'users',
+      rangeKey: 10,
     }, 'gsi0').stateRoot)).toEqual({
-      keyCondition: 'gsi0_pk = :pk and gsi0_sk = :sk',
+      keyCondition: 'gsi0_hash_key = :hashkey and gsi0_range_key = :rangekey',
       names: {
       },
       indexName: 'gsi0',
       values: {
-        ':pk': 'users',
-        ':sk': 10,
+        ':hashkey': 'users',
+        ':rangekey': 10,
       },
     })
   })
@@ -237,12 +237,12 @@ describe('testsuite of query-builder/query-builder', () => {
   })
 
   it('test exclusiveStartKey', () => {
-    expect(compiler.compile(new DefaultQueryBuilder().exclusiveStartKey({ pk: 'users', sk: 100 }).stateRoot)).toEqual({
+    expect(compiler.compile(new DefaultQueryBuilder().exclusiveStartKey({ hashKey: 'users', rangeKey: 100 }).stateRoot)).toEqual({
       names: {},
       values: {},
       exclusiveStartKey: {
-        pk: 'users',
-        sk: 100,
+        hashKey: 'users',
+        rangeKey: 100,
       },
     })
   })
