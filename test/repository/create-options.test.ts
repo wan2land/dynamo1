@@ -9,11 +9,11 @@ describe('testsuite of repository/create-options', () => {
       name: 'users',
       aliasName: 'default',
       separator: '#',
-      hashKey: [{ type: 'text', value: 'users' }],
-      rangeKey: [{ type: 'column', value: 'id' }],
+      hashKey: [{ columns: [], index: expect.any(Function) }],
+      rangeKey: [{ columns: ['id'], index: expect.any(Function) }],
       gsi: [
         {
-          hashKey: [{ type: 'column', value: 'email' }],
+          hashKey: [{ columns: ['email'], index: expect.any(Function) }],
         },
       ],
       columns: [

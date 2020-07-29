@@ -12,8 +12,8 @@ export { createConnection, CreateConnectionOptions } from './connection/create-c
 export { Entity, EntityParams } from './decorators/entity'
 export { Column, ColumnParams } from './decorators/column'
 
-export { column } from './indexer/column'
-export { text } from './indexer/text'
+export { column } from './repository/column-indexer/column'
+export { text } from './repository/column-indexer/text'
 
 export { MetadataStorage } from './metadata/storage'
 

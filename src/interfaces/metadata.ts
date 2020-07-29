@@ -1,17 +1,21 @@
 import { MaybePromise } from './common'
-import { TableIndex } from './repository'
 
-export interface MetadataEntity {
+export interface TableIndexResolver {
+  hashKey: ColumnIndexer<any>[]
+  rangeKey?: ColumnIndexer<any>[]
+}
+
+export interface ColumnIndexer<TEntity> {
+  columns: (keyof TEntity)[]
+  index(entity: TEntity): string
+}
+
+export interface MetadataEntity extends TableIndexResolver {
   target: Function
   name: string
   aliasName: string
   separator: string
-  hashKey: TableIndex<any>[]
-  rangeKey?: TableIndex<any>[]
-  gsi: {
-    hashKey: TableIndex<any>[],
-    rangeKey?: TableIndex<any>[],
-  }[]
+  gsi: TableIndexResolver[]
 }
 
 export interface MetadataColumn {

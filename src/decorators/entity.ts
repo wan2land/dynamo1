@@ -1,5 +1,5 @@
 import { MaybeArray } from '../interfaces/common'
-import { TableIndex } from '../interfaces/repository'
+import { ColumnIndexer } from '../interfaces/metadata'
 import { MetadataStorage } from '../metadata/storage'
 import { strictArray } from '../utils/array'
 
@@ -7,11 +7,11 @@ export interface EntityParams<TEntity> {
   name?: string
   aliasName?: string
   separator?: string
-  hashKey: MaybeArray<TableIndex<TEntity>>
-  rangeKey?: MaybeArray<TableIndex<TEntity>>
+  hashKey: MaybeArray<ColumnIndexer<TEntity>>
+  rangeKey?: MaybeArray<ColumnIndexer<TEntity>>
   gsi?: MaybeArray<{
-    hashKey: MaybeArray<TableIndex<TEntity>>,
-    rangeKey?: MaybeArray<TableIndex<TEntity>>,
+    hashKey: MaybeArray<ColumnIndexer<TEntity>>,
+    rangeKey?: MaybeArray<ColumnIndexer<TEntity>>,
   }>
   metadataStorage?: MetadataStorage
 }

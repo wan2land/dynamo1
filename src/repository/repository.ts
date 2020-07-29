@@ -2,7 +2,8 @@ import { Connection } from '../connection/connection'
 import { resolveIndex } from '../indexer/resolve-index'
 import { MaybeArray } from '../interfaces/common'
 import { QueryResult, DynamoNode } from '../interfaces/connection'
-import { QueryBuilder } from '../interfaces/query-builder'
+import { TableIndexResolver } from '../interfaces/metadata'
+import { QueryBuilder, KeyCondition } from '../interfaces/query-builder'
 import { RepositoryOptions } from '../interfaces/repository'
 import { Compiler } from '../query-builder/compiler'
 import { DefaultQueryBuilder } from '../query-builder/default-query-builder'
@@ -109,35 +110,49 @@ export class Repository<TEntity extends object> {
   }
 
   findOne(conditions: Partial<TEntity> = {}): Promise<TEntity | null> {
-    const indexName = this._getFindableIndex(Object.keys(conditions))
-
-    return this.createQueryBuilder().key({
-      hashKey: resolveIndex(conditions, this.options.hashKey, this.options.separator),
-      ...this.options.rangeKey ? { rangeKey: resolveIndex(conditions, this.options.rangeKey, this.options.separator) } : {},
-    }, indexName).limit(1).getOne()
+    return this._applyKeyCondition(this.createQueryBuilder(), conditions).limit(1).getOne()
   }
 
   findMany(conditions: Partial<TEntity> = {}): Promise<QueryResult<TEntity>> {
-    const indexName = this._getFindableIndex(Object.keys(conditions))
-
-    return this.createQueryBuilder().key({
-      hashKey: resolveIndex(conditions, this.options.hashKey, this.options.separator),
-      ...this.options.rangeKey ? { rangeKey: resolveIndex(conditions, this.options.rangeKey, this.options.separator) } : {},
-    }, indexName).getMany()
+    return this._applyKeyCondition(this.createQueryBuilder(), conditions).getMany()
   }
 
-  _getFindableIndex(propKeys: PropertyKey[]): string | undefined {
-    const tableRequiredPropKeys = this.options.hashKey.filter(index => index.type === 'column').map(({ value }) => value)
+  _applyKeyCondition(qb: QueryBuilder<TEntity>, conditions: Partial<TEntity>) {
+    const conditionKeys = Object.keys(conditions) as PropertyKey[]
+    const [indexer, indexName] = this._getFindableIndex(conditionKeys)
+    const condition: KeyCondition = {
+      hashKey: resolveIndex(conditions, indexer.hashKey, this.options.separator),
+    }
+
+    if (indexer.rangeKey) {
+      let isUsingRangeKey = true
+      for (const propKey of indexer.rangeKey.flatMap(({ columns }) => columns)) {
+        if (!conditionKeys.includes(propKey)) {
+          isUsingRangeKey = false
+          break
+        }
+      }
+
+      if (isUsingRangeKey) {
+        condition.rangeKey = resolveIndex(conditions, indexer.rangeKey, this.options.separator)
+      }
+    }
+
+    return indexName ? qb.key(condition, indexName) : qb.key(condition)
+  }
+
+  _getFindableIndex(propKeys: PropertyKey[]): [TableIndexResolver, string | null] {
+    const tableRequiredPropKeys = this.options.hashKey.flatMap(({ columns }) => columns)
     try {
       for (const requiredPropKey of tableRequiredPropKeys) {
         if (!propKeys.includes(requiredPropKey)) {
           throw new Error(`Column '${typeof requiredPropKey === 'symbol' ? requiredPropKey.toString() : requiredPropKey}' is required.`)
         }
       }
-      return
+      return [this.options, null]
     } catch (e) {
       let foundIndex = -1
-      this.options.gsi.map(gsi => gsi.hashKey.filter(index => index.type === 'column').map(({ value }) => value)).forEach((gsiRequiredPropKeys, gsiIndex) => {
+      this.options.gsi.map(gsi => gsi.hashKey.flatMap(({ columns }) => columns)).forEach((gsiRequiredPropKeys, gsiIndex) => {
         if (foundIndex > -1) {
           return
         }
@@ -148,10 +163,13 @@ export class Repository<TEntity extends object> {
         }
         foundIndex = gsiIndex
       })
-      if (foundIndex === -1) {
-        throw e
+      if (this.options.gsi[foundIndex] && (this.compiler.options.gsi ?? [])[foundIndex]) {
+        return [
+          this.options.gsi[foundIndex],
+          (this.compiler.options.gsi ?? [])[foundIndex].name,
+        ]
       }
-      return (this.compiler.options.gsi ?? [])[foundIndex].name
+      throw e
     }
   }
 }

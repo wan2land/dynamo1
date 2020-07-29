@@ -1,15 +1,5 @@
-import { TableIndex } from '../interfaces/repository'
+import { ColumnIndexer } from '../interfaces/metadata'
 
-export function resolveIndex<TEntity>(entity: TEntity, indexes: TableIndex<TEntity>[], separator: string): string {
-  return indexes.map(index => {
-    switch (index.type) {
-      case 'text': {
-        return index.value
-      }
-      case 'column': {
-        return entity[index.value]
-      }
-    }
-    return '' // fallback
-  }).join(separator)
+export function resolveIndex<TEntity>(entity: TEntity, indexers: ColumnIndexer<TEntity>[], separator: string): string {
+  return indexers.map(indexer => indexer.index(entity)).join(separator)
 }

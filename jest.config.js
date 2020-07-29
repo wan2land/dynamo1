@@ -10,5 +10,6 @@ module.exports = {
     'jsx',
     'json',
   ],
+  setupFiles: ['core-js'],
   setupFilesAfterEnv: ['./test/setup.js'],
 }
