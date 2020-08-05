@@ -37,7 +37,7 @@
     "@types/faker": "4.1.12",
     "@types/jest": "26.0.8",
     "@types/node": "12.12.53",
-    "@types/uuid": "8.0.0",
+    "@types/uuid": "8.0.1",
     "eslint": "7.6.0",
     "eslint-config-stable": "0.8.0",
     "faker": "4.1.0",
