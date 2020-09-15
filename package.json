@@ -36,7 +36,7 @@
     "@babel/preset-typescript": "7.10.4",
     "@types/faker": "4.1.12",
     "@types/jest": "26.0.13",
-    "@types/node": "12.12.58",
+    "@types/node": "12.12.59",
     "@types/uuid": "8.3.0",
     "eslint": "7.9.0",
     "eslint-config-stable": "0.8.0",
