@@ -26,6 +26,15 @@ export class Repository<TEntity extends object> {
     return new DefaultQueryBuilder<TEntity>(this.executor)
   }
 
+  hydrate(datas: Record<string, any>[]): TEntity[]
+  hydrate(data: Record<string, any>): TEntity
+  hydrate(data: MaybeArray<Record<string, any>>): MaybeArray<TEntity> {
+    if (!Array.isArray(data)) {
+      return this.hydrate([data])[0]
+    }
+    return data.map(data => this.executor.hydrate(data))
+  }
+
   create(): TEntity
   create(entityLike: Partial<TEntity>): TEntity
   create(entityLike: Partial<TEntity> = {}): TEntity {
@@ -42,8 +51,8 @@ export class Repository<TEntity extends object> {
     return entity
   }
 
-  persist(entity: TEntity): Promise<TEntity>
   persist(entities: TEntity[]): Promise<TEntity[]>
+  persist(entity: TEntity): Promise<TEntity>
   persist(entity: MaybeArray<TEntity>): Promise<MaybeArray<TEntity>> {
     if (!Array.isArray(entity)) {
       return this.persist([entity]).then(entities => entities[0])

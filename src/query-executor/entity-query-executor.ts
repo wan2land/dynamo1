@@ -15,18 +15,20 @@ export class EntityQueryExecutor<TEntity extends object> implements QueryExecuto
   ) {
   }
 
+  hydrate(data: Record<string, any>): TEntity {
+    const entity = {} as any
+    Object.setPrototypeOf(entity, this.options.target.prototype)
+    for (const column of this.options.columns) {
+      entity[column.property] = data[column.name] ?? null
+    }
+    this.persistEntities.add(entity)
+    return entity as TEntity
+  }
+
   execute(state: QueryBuilderState): Promise<QueryResult<TEntity>> {
     return this.connection.query(this.compiler.compile(state)).then(({ nodes, lastEvaluatedKey }) => {
       return {
-        nodes: nodes.map((node) => {
-          const entity = {} as any
-          Object.setPrototypeOf(entity, this.options.target.prototype)
-          for (const column of this.options.columns) {
-            entity[column.property] = (node.data as any)[column.name] ?? null
-          }
-          this.persistEntities.add(entity)
-          return entity as TEntity
-        }),
+        nodes: nodes.map((node) => this.hydrate(node.data)),
         lastEvaluatedKey,
       }
     })
