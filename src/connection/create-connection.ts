@@ -1,4 +1,5 @@
 import { DynamoDB } from 'aws-sdk'
+
 import { ConnectionOptions } from '../interfaces/connection'
 import { Connection } from './connection'
 

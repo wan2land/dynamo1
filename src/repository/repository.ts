@@ -62,11 +62,19 @@ export class Repository<TEntity extends object> {
     return Promise.all(entities.map(async (entity) => {
       if (this.persistEntities.has(entity)) {
         return Promise.all(this.options.columns.map(column => {
-          return column.onUpdate ? Promise.resolve(column.onUpdate(entity)).then((value) => { (entity as any)[column.property] = value }) : Promise.resolve()
+          return column.onUpdate
+            ? Promise.resolve(column.onUpdate(entity)).then((value) => { (entity as any)[column.property] = value })
+            : column.onPersist
+              ? Promise.resolve(column.onPersist(entity)).then((value) => { (entity as any)[column.property] = value })
+              : Promise.resolve()
         }))
       }
       return Promise.all(this.options.columns.map(column => {
-        return column.onCreate ? Promise.resolve(column.onCreate(entity)).then((value) => { (entity as any)[column.property] = value }) : Promise.resolve()
+        return column.onCreate
+          ? Promise.resolve(column.onCreate(entity)).then((value) => { (entity as any)[column.property] = value })
+          : column.onPersist
+            ? Promise.resolve(column.onPersist(entity)).then((value) => { (entity as any)[column.property] = value })
+            : Promise.resolve()
       }))
     })).then(() => {
       return entities.map<DynamoNode<any>>(entity => {

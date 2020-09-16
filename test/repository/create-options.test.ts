@@ -43,8 +43,7 @@ describe('testsuite of repository/create-options', () => {
           target: User,
           property: 'updatedAt',
           name: 'updatedAt',
-          onCreate: expect.any(Function),
-          onUpdate: expect.any(Function),
+          onPersist: expect.any(Function),
         },
       ],
     })

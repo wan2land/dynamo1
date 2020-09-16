@@ -5,9 +5,9 @@ export interface TableIndexResolver {
   rangeKey?: ColumnIndexer<any>[]
 }
 
-export interface ColumnIndexer<TEntity> {
+export interface ColumnIndexer<TEntity, TType = string> {
   columns: (keyof TEntity)[]
-  index(entity: TEntity): string
+  index(entity: TEntity): TType
 }
 
 export interface MetadataEntity extends TableIndexResolver {
@@ -24,4 +24,5 @@ export interface MetadataColumn {
   name: string
   onCreate?: (entity: any) => MaybePromise<any>
   onUpdate?: (entity: any) => MaybePromise<any>
+  onPersist?: (entity: any) => MaybePromise<any>
 }

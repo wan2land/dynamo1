@@ -5,6 +5,7 @@ export interface ColumnParams<TEntity> {
   name?: string
   onCreate?: (entity: TEntity) => MaybePromise<any>
   onUpdate?: (entity: TEntity) => MaybePromise<any>
+  onPersist?: (entity: TEntity) => MaybePromise<any>
   metadataStorage?: MetadataStorage
 }
 
@@ -24,6 +25,7 @@ export function Column<TEntity = Record<string, any>>(params: ColumnParams<TEnti
       name: params.name ?? (typeof property === 'string' ? property : property.toString()),
       onCreate: params.onCreate,
       onUpdate: params.onUpdate,
+      onPersist: params.onPersist,
     })
   }
 }
