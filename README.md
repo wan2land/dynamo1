@@ -77,10 +77,12 @@ export class User {
 ## Todo
 
 - [x] Add GSI support to findOne, findMany in Repository
-- [ ] Add Connection.scan
-- [ ] Add Repository.scan
-- [ ] Add Repository.count
-- [x] Add QueryBuilder, Repository.createQueryBuilder
-- [ ] Add ScanBuilder, Repository.createScanBuilder
+- [x] Add QueryBuilder, Repository createQueryBuilder method
+- [ ] Add Connection scan method
+- [ ] Add Repository count method
+- [ ] Logging
+- [ ] Index Full Type (buffer, string, number)
+- [ ] Add Connection updateItem method
+- [ ] Update Expression Builder (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html)
+- [ ] Multi tables
 - [ ] Define custom error types
-- [ ] Add condition to findOne, findMany
