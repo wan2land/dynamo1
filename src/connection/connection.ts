@@ -3,7 +3,6 @@ import { WriteRequest } from 'aws-sdk/clients/dynamodb'
 
 import { ConstructType } from '../interfaces/common'
 import {
-  DynamoKey,
   CountParams,
   DeleteItemParams,
   DynamoIndex,
@@ -22,6 +21,7 @@ import { Repository } from '../repository/repository'
 import { isNotEmptyObject } from '../utils/object'
 import { assertDynamoIndex } from './assert'
 import { fromDynamoMap, attrsToDynamoNode, dynamoNodeToAttrs, dynamoCursorToKey, toDynamoMap } from './transformer'
+import { chunk } from '../utils/array'
 
 export class Connection {
 
@@ -155,26 +155,28 @@ export class Connection {
       assertDynamoIndex(option, node.cursor)
     }
 
-    return this.client.batchWriteItem({
-      RequestItems: {
-        [option.tableName]: nodes.map<WriteRequest>(node => ({
-          PutRequest: {
-            Item: dynamoNodeToAttrs(node, option),
-          },
-        })),
-      },
-    }).promise().then<boolean[]>(({ UnprocessedItems }) => {
-      const unprocessedItems = (UnprocessedItems?.[option.tableName] ?? [])
-        .filter(({ PutRequest }) => PutRequest)
-        .map(({ PutRequest }) => fromDynamoMap(PutRequest!.Item))
+    return Promise.all(chunk(nodes, 25).map(sliced => {
+      return this.client.batchWriteItem({
+        RequestItems: {
+          [option.tableName]: sliced.map<WriteRequest>(node => ({
+            PutRequest: {
+              Item: dynamoNodeToAttrs(node, option),
+            },
+          })),
+        },
+      }).promise().then<boolean[]>(({ UnprocessedItems }) => {
+        const unprocessedItems = (UnprocessedItems?.[option.tableName] ?? [])
+          .filter(({ PutRequest }) => PutRequest)
+          .map(({ PutRequest }) => fromDynamoMap(PutRequest!.Item))
 
-      const hashKeyOption = option.hashKey
-      if (option.rangeKey) {
-        const optionSk = option.rangeKey
-        return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[hashKeyOption.name] === cursor.hashKey && item[optionSk.name] === cursor.rangeKey))
-      }
-      return nodes.map(({ cursor }) => !unprocessedItems.find((item) => item[hashKeyOption.name] === cursor.hashKey))
-    })
+        const hashKeyOption = option.hashKey
+        if (option.rangeKey) {
+          const optionSk = option.rangeKey
+          return sliced.map(({ cursor }) => !unprocessedItems.find((item) => item[hashKeyOption.name] === cursor.hashKey && item[optionSk.name] === cursor.rangeKey))
+        }
+        return sliced.map(({ cursor }) => !unprocessedItems.find((item) => item[hashKeyOption.name] === cursor.hashKey))
+      })
+    })).then(successes => successes.flatMap(success => success))
   }
 
   public deleteItem<TData extends Record<string, any>>(cursor: DynamoIndex, params: DeleteItemParams = {}): Promise<DynamoNode<TData> | null> {

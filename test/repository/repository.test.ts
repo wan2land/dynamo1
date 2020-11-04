@@ -4,7 +4,7 @@ import { beginsWith } from '../../src'
 import { Connection } from '../../src/connection/connection'
 import { Something } from '../stubs/something'
 import { User } from '../stubs/user'
-
+import { range } from '../../src/utils/array'
 
 async function createSafeConnection(tableName: string): Promise<Connection> {
   const ddb = await global.createDynamoClient()
@@ -32,11 +32,6 @@ async function createSafeConnection(tableName: string): Promise<Connection> {
     BillingMode: 'PAY_PER_REQUEST',
   }).promise()
   return connection
-}
-
-
-function range(count: number): number[] {
-  return [...new Array(count).keys()]
 }
 
 function sortBy<T>(key: keyof T) {
