@@ -3,6 +3,7 @@ import { Repository } from '../../src/repository/repository'
 import { Article } from '../stubs/article'
 import { ArticleRepository } from '../stubs/article-repository'
 import { User } from '../stubs/user'
+import { range } from '../../src/utils/array'
 
 async function createSafeConnection(tableName: string): Promise<Connection> {
   const ddb = await global.createDynamoClient()
@@ -225,6 +226,21 @@ describe('testsuite of connection/connection', () => {
         value: 'this is test putManyItems 2',
       },
     })
+
+    const items = range(50).map(index => ({
+      cursor: { hashKey: 'users-3_4', rangeKey: `users-3_4_${index}` },
+      index: [
+        { hashKey: `users-idx-00301${index}` },
+      ],
+      data: {
+        value: `this is test putManyItems ${index}`,
+      },
+    }))
+    await connection.putManyItems(items)
+
+    for (const item of items) {
+      await expect(connection.getItem({ hashKey: item.cursor.hashKey, rangeKey: item.cursor.rangeKey })).resolves.toEqual(item)
+    }
   })
 
   it('test deleteItem', async () => {
