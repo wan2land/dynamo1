@@ -28,12 +28,12 @@
     "core-js": "3.9.0"
   },
   "devDependencies": {
-    "@babel/cli": "7.12.17",
-    "@babel/core": "7.12.17",
-    "@babel/plugin-proposal-class-properties": "7.12.13",
-    "@babel/plugin-proposal-object-rest-spread": "7.12.13",
-    "@babel/preset-env": "7.12.17",
-    "@babel/preset-typescript": "7.12.17",
+    "@babel/cli": "7.13.0",
+    "@babel/core": "7.13.1",
+    "@babel/plugin-proposal-class-properties": "7.13.0",
+    "@babel/plugin-proposal-object-rest-spread": "7.13.0",
+    "@babel/preset-env": "7.13.0",
+    "@babel/preset-typescript": "7.13.0",
     "@types/faker": "5.1.7",
     "@types/jest": "26.0.20",
     "@types/node": "12.20.4",
