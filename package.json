@@ -34,7 +34,7 @@
     "@babel/plugin-proposal-object-rest-spread": "7.14.7",
     "@babel/preset-env": "7.14.7",
     "@babel/preset-typescript": "7.14.5",
-    "@types/faker": "5.5.6",
+    "@types/faker": "5.5.7",
     "@types/jest": "26.0.23",
     "@types/node": "12.20.15",
     "@types/uuid": "8.3.1",
